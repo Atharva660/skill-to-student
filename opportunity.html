@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Opportunity Analysis — SkillMatch</title>
+  <link rel="stylesheet" href="css/styles.css"/>
+  <script src="js/icons.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    .radar-wrap { height: 260px; }
+    .draft-box { background:var(--bg); border:1.5px solid var(--border); border-radius:var(--radius-lg); padding:16px; font-size:0.9rem; line-height:1.7; min-height:120px; white-space:pre-wrap; color:var(--text); font-family:var(--font); }
+    .draft-box.loading { color:var(--text-subtle); font-style:italic; }
+    .eli-row { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:var(--radius); border:1px solid var(--border); font-size:0.875rem; margin-bottom:6px; }
+    .eli-row.pass { border-color:#86efac; background:#f0fdf4; }
+    .eli-row.fail { border-color:#fca5a5; background:#fff5f5; }
+    .icon-inline { display:inline-flex; align-items:center; justify-content:center; vertical-align:middle; }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">S</div>
+      <span style="font-size:0.95rem;font-weight:800;color:white;">SkillMatch</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="/dashboard.html" class="nav-link"><span class="icon icon-inline" id="nav-icon-home"></span> Dashboard</a>
+      <a href="/bookmarks.html" class="nav-link"><span class="icon icon-inline" id="nav-icon-bm"></span> My Applications</a>
+      <a href="/profile.html" class="nav-link"><span class="icon icon-inline" id="nav-icon-prof"></span> My Profile</a>
+      <div class="sidebar-divider"></div>
+      <div class="nav-section-label">Management</div>
+      <a href="/admin.html" class="nav-link"><span class="icon icon-inline" id="nav-icon-adm"></span> Ingest &amp; Admin</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="student-chip" onclick="window.location.href='/profile.html'">
+        <div class="avatar" id="s-avatar">?</div>
+        <div class="min-w-0">
+          <div class="text-sm font-semibold text-white truncate" id="s-name">—</div>
+          <div class="text-xs truncate" style="color:rgba(255,255,255,0.45)" id="s-meta">—</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main-area">
+    <header class="top-bar">
+      <button class="btn btn-secondary btn-sm" onclick="window.location.href='/dashboard.html'">← Back to Feed</button>
+      <div style="flex:1;"></div>
+      <div class="avatar" id="h-avatar" onclick="window.location.href='/profile.html'" style="cursor:pointer;">?</div>
+    </header>
+
+    <div class="page-wrap" id="detail-wrap">
+      <div class="empty-state"><div class="empty-title">Loading opportunity analysis...</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-tray" id="toast-tray"></div>
+
+<script src="js/agent.js"></script>
+<script>
+const API = 'http://localhost:5000';
+let student = null, opp = null, match = null, radarChart = null;
+const pid = localStorage.getItem('sm_profile_id');
+
+document.addEventListener('DOMContentLoaded', async () => {
+  document.getElementById('nav-icon-home').innerHTML = ICONS.home;
+  document.getElementById('nav-icon-bm').innerHTML = ICONS.bookmark;
+  document.getElementById('nav-icon-prof').innerHTML = ICONS.user;
+  document.getElementById('nav-icon-adm').innerHTML = ICONS.analytics;
+
+  if (!pid) { window.location.href = '/'; return; }
+
+  const params = new URLSearchParams(window.location.search);
+  const oppId = parseInt(params.get('id'));
+
+  const [profileRes, oppsRes, bmRes] = await Promise.all([
+    fetch(`${API}/api/profile/${pid}`),
+    fetch(`${API}/api/opportunities?profile_id=${pid}`),
+    fetch(`${API}/api/bookmarks?profile_id=${pid}`)
+  ]);
+
+  student = await profileRes.json();
+  const opps = await oppsRes.json();
+  const bmIds = new Set(await bmRes.json());
+
+  opp = opps.find(o => o.id === oppId);
+  if (!opp) {
+    document.getElementById('detail-wrap').innerHTML = `<div class="empty-state"><div class="empty-title">Opportunity not found</div><a href="/dashboard.html" class="btn btn-primary mt-4">Return to Dashboard →</a></div>`;
+    return;
+  }
+
+  match = opp.match;
+  document.title = `${opp.title} — SkillMatch`;
+
+  const ini = (student.name||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  ['s-avatar','h-avatar'].forEach(id => { const e=document.getElementById(id); if(e) e.textContent=ini; });
+  document.getElementById('s-name').textContent = student.name;
+  document.getElementById('s-meta').textContent = `Year ${student.year} · ${student.branch}`;
+
+  const appsRes = await fetch(`${API}/api/applications?profile_id=${pid}`);
+  const apps = await appsRes.json();
+  const existingApp = apps.find(a => a.opp_id === oppId);
+
+  renderDetail(bmIds.has(oppId), existingApp);
+});
+
+function deadlineBadge(dl) {
+  if (dl < 0) return { cls:'badge-gray', text:'Closed' };
+  if (dl === 0) return { cls:'badge-red', text:'Closes Today' };
+  if (dl <= 1) return { cls:'badge-red', text:'1 day left' };
+  if (dl <= 3) return { cls:'badge-red', text:`${dl}d remaining` };
+  if (dl <= 7) return { cls:'badge-amber', text:`${dl} days left` };
+  return { cls:'badge-gray', text:`${dl} days left` };
+}
+
+function renderDetail(isBm, existingApp) {
+  const m = match || {};
+  const dl = m.daysLeft ?? 999;
+  const db = deadlineBadge(dl);
+  const circumference = 2 * Math.PI * 60;
+  const dashOff = circumference - ((m.percentage||0) / 100) * circumference;
+  const appStatus = existingApp?.status;
+
+  document.getElementById('detail-wrap').innerHTML = `
+  <div class="fade-up">
+
+    <!-- Opp Header -->
+    <div class="card mb-5" style="padding:24px;position:relative;overflow:hidden;">
+      <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--primary),var(--blue-400));"></div>
+
+      <div class="flex gap-4 items-start">
+        <div class="org-logo" style="width:56px;height:56px;background:${opp.orgColor||'#2563eb'};font-size:0.9rem;">${opp.orgInitials||'??'}</div>
+        <div style="flex:1;min-width:0;">
+          <div class="flex gap-2 items-center flex-wrap mb-2">
+            <span class="badge badge-gray">${opp.type}</span>
+            <span class="badge ${db.cls}">${db.text}</span>
+            ${!m.eligible ? '<span class="badge badge-red">Eligibility Restricted</span>' : '<span class="badge badge-green">Verified Eligible</span>'}
+            ${opp.featured ? '<span class="badge badge-blue">Priority Listing</span>' : ''}
+            ${appStatus ? `<span class="badge" style="background:var(--purple-soft);color:var(--purple);">${appStatus.toUpperCase()}</span>` : ''}
+          </div>
+          <h1 style="font-size:1.625rem;font-weight:800;line-height:1.2;">${opp.title}</h1>
+          <p class="text-muted mt-1" style="font-size:0.9rem;">${opp.org} · ${opp.mode} · ${opp.location}</p>
+        </div>
+
+        <!-- Action buttons -->
+        <div class="flex gap-2" style="flex-shrink:0;">
+          <button class="btn btn-secondary btn-sm" id="bm-btn" onclick="toggleBm()">
+            ${isBm ? 'Tracked' : 'Save Bookmark'}
+          </button>
+          ${opp.applyUrl
+            ? `<a href="${opp.applyUrl}" target="_blank" rel="noopener" class="btn btn-primary" id="apply-btn" onclick="recordApply()">
+                External Application ↗
+               </a>`
+            : `<button class="btn btn-primary" onclick="recordApply()">Mark as Applied</button>`
+          }
+        </div>
+      </div>
+
+      <!-- Details row -->
+      <div style="display:flex;gap:24px;flex-wrap:wrap;margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
+        ${[['Compensation', opp.stipend || 'Unpaid / Certificate', 'var(--green)'],
+           ['Duration', opp.duration || 'Flexible', ''],
+           ['Work Mode', opp.mode || 'Remote', ''],
+           ['Deadline Date', opp.deadline, dl<=3?'var(--red)':''],
+           ['Difficulty Level', opp.difficulty || 'Intermediate', ''],
+           ['Total Applicants', (opp.applicants||0).toLocaleString(), '']
+          ].map(([lbl,val,clr]) => `
+          <div style="display:flex;flex-direction:column;gap:2px;">
+            <span style="font-size:0.68rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-subtle);">${lbl}</span>
+            <span style="font-weight:600;font-size:0.875rem;${clr?'color:'+clr:''}">${val}</span>
+          </div>`).join('')}
+      </div>
+    </div>
+
+    <!-- Two column -->
+    <div class="detail-2col">
+
+      <!-- LEFT -->
+      <div class="flex flex-col gap-5">
+
+        <!-- About -->
+        <div class="card">
+          <h3 class="mb-3">Overview &amp; Scope</h3>
+          <p style="line-height:1.8;">${opp.longDescription || opp.description}</p>
+          <div class="chips mt-4">
+            ${(opp.tags||[]).map(t => `<span class="chip" style="cursor:default;">${t}</span>`).join('')}
+          </div>
+        </div>
+
+        <!-- Eligibility check -->
+        <div class="card">
+          <h3 class="mb-4">Eligibility Verification</h3>
+
+          <!-- Year -->
+          <div class="eli-row ${(opp.eligibleYears||[]).includes(parseInt(student.year)) ? 'pass' : 'fail'}">
+            <span style="flex:1;font-weight:500;">Year of Study</span>
+            <span class="badge badge-gray">Permitted: Year ${(opp.eligibleYears||[]).join('/')}</span>
+            <span style="font-weight:600;font-size:0.8rem;">Current: Year ${student.year}</span>
+          </div>
+
+          <!-- Branch -->
+          <div class="eli-row ${((opp.eligibleBranches||['All']).includes('All') || (opp.eligibleBranches||[]).includes(student.branch)) ? 'pass' : 'fail'}">
+            <span style="flex:1;font-weight:500;">Branch of Specialization</span>
+            <span class="badge badge-gray">${(opp.eligibleBranches||['All']).join(', ')}</span>
+            <span style="font-weight:600;font-size:0.8rem;">Current: ${student.branch}</span>
+          </div>
+
+          <!-- CGPA -->
+          <div class="eli-row ${!opp.minCGPA || parseFloat(student.cgpa||0) >= opp.minCGPA ? 'pass' : 'fail'}">
+            <span style="flex:1;font-weight:500;">Minimum CGPA Threshold</span>
+            <span class="badge badge-gray">${opp.minCGPA ? `Min ${opp.minCGPA}` : 'None Required'}</span>
+            <span style="font-weight:600;font-size:0.8rem;">Current: ${student.cgpa || 'N/A'}</span>
+          </div>
+        </div>
+
+        <!-- Skill Comparison -->
+        <div class="card">
+          <h3 class="mb-4">Competency Comparison</h3>
+          <div class="label mb-2">Mandatory Requirements</div>
+          ${(opp.requiredSkills||[]).map(skill => {
+            const has = (student.skills||[]).some(s => s.toLowerCase()===skill.toLowerCase() || s.toLowerCase().includes(skill.toLowerCase()) || skill.toLowerCase().includes(s.toLowerCase()));
+            return `<div class="skill-row ${has ? 'has' : 'miss'}">
+              <span class="flex-1 font-medium">${skill}</span>
+              <span class="badge ${has ? 'badge-green' : 'badge-gray'}">Required</span>
+              <span class="sk-status" style="font-size:0.75rem;font-weight:700;color:${has?'var(--green)':'var(--red)'};">${has ? 'Verified' : 'Missing'}</span>
+            </div>`;
+          }).join('')}
+          ${opp.niceToHaveSkills?.length ? `
+          <div class="label mt-4 mb-2">Preferred Competencies</div>
+          ${(opp.niceToHaveSkills||[]).map(skill => {
+            const has = (student.skills||[]).some(s => s.toLowerCase()===skill.toLowerCase() || s.toLowerCase().includes(skill.toLowerCase()));
+            return `<div class="skill-row ${has ? 'nice' : ''}">
+              <span class="flex-1 font-medium">${skill}</span>
+              <span class="badge badge-amber">Bonus</span>
+              <span class="sk-status" style="font-size:0.75rem;font-weight:700;color:${has?'var(--primary)':'var(--text-muted)'};">${has ? 'Verified' : 'Optional'}</span>
+            </div>`;
+          }).join('')}` : ''}
+        </div>
+
+        <!-- Application Draft Generator -->
+        <div class="card">
+          <div class="flex items-center gap-3 mb-3">
+            <div>
+              <h3 style="margin:0;">Tailored Application Pitch Note</h3>
+              <p style="margin:0;font-size:0.8rem;" class="text-muted">Synthesize personalized pitch note using student competencies and criteria</p>
+            </div>
+            <button class="btn btn-primary btn-sm ml-auto" onclick="generateDraft()" id="draft-btn">
+              Generate Note →
+            </button>
+          </div>
+          <div class="draft-box" id="draft-box">Click "Generate Note" to create a structured submission note based on verified skill intersections.</div>
+          <div class="flex gap-2 mt-3" id="draft-actions" style="display:none!important;">
+            <button class="btn btn-secondary btn-sm" onclick="copyDraft()">Copy Text</button>
+            <button class="btn btn-ghost btn-sm" onclick="generateDraft()">Regenerate</button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT SIDEBAR -->
+      <div class="detail-sidebar">
+
+        <!-- Match Score Ring -->
+        <div class="card" style="text-align:center;padding:24px;">
+          <div class="score-ring-xl" style="margin:0 auto 12px;">
+            <svg viewBox="0 0 140 140">
+              <circle class="ring-bg" cx="70" cy="70" r="60"/>
+              <circle class="ring-fg" cx="70" cy="70" r="60"
+                stroke="${m.matchColor||'#2563eb'}"
+                stroke-dasharray="${circumference}"
+                stroke-dashoffset="${circumference}"
+                data-off="${dashOff}" id="big-ring"/>
+            </svg>
+            <div class="ring-center">
+              <span class="score-num" style="color:${m.matchColor||'#2563eb'};" id="score-anim">0%</span>
+              <span class="score-suffix">Match Index</span>
+            </div>
+          </div>
+          <div class="font-bold" style="color:${m.matchColor||'#2563eb'};font-size:1rem;">${m.matchLabel||'Calculating...'}</div>
+          <div class="text-xs text-muted mt-1">${m.eligible ? 'Criteria satisfied' : 'Eligibility restrictions apply'}</div>
+
+          <!-- Sub-scores -->
+          <div class="flex flex-col gap-3 mt-4" style="text-align:left;">
+            <div>
+              <div class="flex justify-between mb-1">
+                <span class="text-xs text-muted">Required Skills Coverage</span>
+                <span class="text-xs font-semibold">${(m.matchedSkills||[]).length}/${(opp.requiredSkills||[]).length}</span>
+              </div>
+              <div class="progress"><div class="progress-fill" style="width:${(opp.requiredSkills||[]).length > 0 ? Math.round(((m.matchedSkills||[]).length / opp.requiredSkills.length)*100) : 0}%;"></div></div>
+            </div>
+            <div>
+              <div class="flex justify-between mb-1">
+                <span class="text-xs text-muted">Bonus Alignment</span>
+                <span class="text-xs font-semibold">${(m.bonusSkills||[]).length} verified</span>
+              </div>
+              <div class="progress"><div class="progress-fill" style="width:${(opp.niceToHaveSkills||[]).length > 0 ? Math.round(((m.bonusSkills||[]).length/(opp.niceToHaveSkills||[]).length)*100) : 100}%;background:var(--amber);"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Explainability -->
+        <div class="card">
+          <h3 class="mb-3">Verification Signals</h3>
+          <div class="flex flex-col gap-2">
+            ${(m.reasons||['Evaluated by multi-signal ranker']).map(r =>
+              `<div style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);font-size:0.8125rem;">${r}</div>`
+            ).join('')}
+            ${(m.eligibilityIssues||[]).map(i =>
+              `<div style="padding:8px 12px;background:#fff5f5;border:1px solid #fca5a5;border-radius:var(--radius);font-size:0.8125rem;color:var(--red);">${i}</div>`
+            ).join('')}
+          </div>
+        </div>
+
+        <!-- Radar Chart -->
+        <div class="card">
+          <h3 class="mb-1">Competency Radar</h3>
+          <p class="text-xs text-muted mb-3">Student profile vs. opportunity requirements</p>
+          <div class="radar-wrap"><canvas id="radar-chart"></canvas></div>
+          ${(m.missingSkills||[]).length > 0 ? `
+          <div style="background:#fff5f5;border:1px solid #fca5a5;border-radius:var(--radius);padding:10px 12px;margin-top:12px;">
+            <div class="text-xs font-semibold text-red mb-2">Identified Skill Gaps:</div>
+            <div class="chips">${(m.missingSkills||[]).map(s => `<span class="chip missing" style="cursor:default;">${s}</span>`).join('')}</div>
+          </div>` : `
+          <div style="background:#ecfdf5;border:1px solid #86efac;border-radius:var(--radius);padding:10px 12px;margin-top:12px;">
+            <div class="text-xs font-semibold text-green">All required competencies confirmed</div>
+          </div>`}
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="card flex flex-col gap-3">
+          ${opp.applyUrl
+            ? `<a href="${opp.applyUrl}" target="_blank" rel="noopener" class="btn btn-primary w-full" style="justify-content:center;" onclick="recordApply()">
+                Open Registration Portal ↗
+               </a>`
+            : `<button class="btn btn-primary w-full" onclick="recordApply()" style="justify-content:center;">Mark as Applied</button>`
+          }
+          <button class="btn btn-secondary w-full" onclick="toggleBm()" id="bm-btn-2" style="justify-content:center;">
+            ${isBm ? 'Remove Bookmark' : 'Save to Applications'}
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>`;
+
+  setTimeout(() => {
+    const ring = document.getElementById('big-ring');
+    if (ring) {
+      ring.style.transition = 'stroke-dashoffset 1.2s cubic-bezier(0.4,0,0.2,1)';
+      ring.style.strokeDashoffset = dashOff;
+    }
+    animateCounter('score-anim', 0, m.percentage||0, 1000);
+    drawRadar();
+  }, 150);
+}
+
+function animateCounter(id, from, to, duration) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const start = Date.now();
+  const tick = () => {
+    const progress = Math.min((Date.now() - start) / duration, 1);
+    const ease = 1 - Math.pow(1 - progress, 3);
+    el.textContent = Math.round(from + (to - from) * ease) + '%';
+    if (progress < 1) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
+function drawRadar() {
+  const canvas = document.getElementById('radar-chart');
+  if (!canvas) return;
+  const allSkills = [...new Set([...(opp.requiredSkills||[]), ...(opp.niceToHaveSkills||[]).slice(0,3)])].slice(0,7);
+  if (allSkills.length === 0) return;
+
+  const studentSkillsLow = (student.skills||[]).map(s => s.toLowerCase());
+  const labels = allSkills.map(s => s.length > 12 ? s.slice(0,12)+'…' : s);
+  const you = allSkills.map(s => studentSkillsLow.some(ss => ss.includes(s.toLowerCase()) || s.toLowerCase().includes(ss)) ? 90 : 15);
+  const req = allSkills.map(() => 100);
+
+  if (radarChart) radarChart.destroy();
+  radarChart = new Chart(canvas, {
+    type: 'radar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Your Profile', data: you, backgroundColor: 'rgba(37,99,235,0.18)', borderColor: '#2563eb', borderWidth: 2, pointBackgroundColor: '#2563eb' },
+        { label: 'Requirements', data: req, backgroundColor: 'rgba(226,232,240,0.3)', borderColor: '#94a3b8', borderWidth: 1, borderDash: [4,4], pointRadius: 0 }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        r: {
+          min: 0, max: 100, ticks: { display: false, stepSize: 50 },
+          grid: { color: 'rgba(226,232,240,0.8)' },
+          angleLines: { color: 'rgba(226,232,240,0.8)' },
+          pointLabels: { font: { family: 'Inter', size: 10, weight: '600' }, color: '#475569' }
+        }
+      },
+      plugins: {
+        legend: { position: 'bottom', labels: { boxWidth: 10, font: { family: 'Inter', size: 10 }, color: '#64748b' } }
+      }
+    }
+  });
+}
+
+async function generateDraft() {
+  const btn = document.getElementById('draft-btn');
+  const box = document.getElementById('draft-box');
+  btn.disabled = true; btn.textContent = 'Generating...';
+  box.textContent = 'Synthesizing tailored application note...';
+  box.classList.add('loading');
+
+  try {
+    const res = await fetch(`${API}/api/draft`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ profile_id: pid, opp_id: opp.id })
+    });
+    const data = await res.json();
+    box.textContent = data.draft;
+    box.classList.remove('loading');
+    document.getElementById('draft-actions').style.display = 'flex';
+  } catch {
+    box.textContent = 'Service unavailable. Ensure backend is running.';
+  }
+  btn.disabled = false; btn.textContent = 'Regenerate Note →';
+}
+
+function copyDraft() {
+  const text = document.getElementById('draft-box').textContent;
+  navigator.clipboard.writeText(text).then(() => showToast('Copied note to clipboard', 'success'));
+}
+
+async function toggleBm() {
+  const isBm = document.getElementById('bm-btn')?.textContent.includes('Tracked');
+  if (isBm) {
+    await fetch(`${API}/api/bookmarks`, { method:'DELETE', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ profile_id: pid, opp_id: opp.id }) });
+    ['bm-btn','bm-btn-2'].forEach(id => { const e=document.getElementById(id); if(e) e.textContent='Save Bookmark'; });
+    showToast('Bookmark removed', 'info');
+  } else {
+    await fetch(`${API}/api/bookmarks`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ profile_id: pid, opp_id: opp.id }) });
+    ['bm-btn','bm-btn-2'].forEach(id => { const e=document.getElementById(id); if(e) e.textContent='Tracked'; });
+    showToast('Saved to applications', 'success');
+  }
+}
+
+async function recordApply() {
+  await fetch(`${API}/api/apply`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ profile_id: pid, opp_id: opp.id, status: 'applied' })
+  });
+  showToast('Marked as applied. View pipeline in My Applications.', 'success');
+}
+
+function showToast(msg, type='info') {
+  const tray = document.getElementById('toast-tray');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.innerHTML = `<span>${type==='success'?ICONS.check:ICONS.alert}</span><span>${msg}</span>`;
+  tray.appendChild(t);
+  setTimeout(()=>{ t.style.animation='toastOut 0.3s ease forwards'; setTimeout(()=>t.remove(),300); }, 3000);
+}
+</script>
+</body>
+</html>

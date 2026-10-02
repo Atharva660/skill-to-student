@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Application Tracker — SkillMatch</title>
+  <meta name="description" content="Track your applications and bookmarked opportunities."/>
+  <link rel="stylesheet" href="css/styles.css"/>
+  <script src="js/icons.js"></script>
+  <style>
+    .status-badge { display:inline-flex; align-items:center; gap:6px; padding:4px 12px; border-radius:var(--radius-full); font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; }
+    .status-saved { background:var(--blue-50); color:var(--primary); border:1px solid var(--border-blue); }
+    .status-applied { background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; }
+    .status-shortlisted { background:#fef3c7; color:#d97706; border:1px solid #fde68a; }
+    .status-selected { background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; }
+    .status-rejected { background:#fef2f2; color:#dc2626; border:1px solid #fecaca; }
+
+    .pipeline-step { flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; min-width:85px; position:relative; }
+    .pipeline-circle { width:42px; height:42px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:0.9rem; font-weight:700; border:2px solid var(--border); background:var(--bg-white); transition:all var(--base); }
+    .pipeline-circle.active { border-color:var(--primary); background:var(--primary-soft); color:var(--primary); transform:scale(1.05); }
+
+    .app-card { background:var(--bg-white); border:1px solid var(--border); border-radius:var(--radius-lg); padding:20px; transition:all var(--fast); display:flex; flex-direction:column; gap:14px; }
+    .app-card:hover { border-color:var(--border-strong); box-shadow:var(--shadow-sm); transform:translateY(-1px); }
+
+    .filter-pill { padding:7px 16px; border-radius:var(--radius-full); border:1px solid var(--border); background:var(--bg-white); color:var(--text-muted); font-size:0.82rem; font-weight:600; cursor:pointer; transition:all var(--fast); }
+    .filter-pill:hover { border-color:var(--primary); color:var(--primary); }
+    .filter-pill.active { background:var(--primary); color:white; border-color:var(--primary); box-shadow:var(--shadow-blue); }
+    .icon-inline { display:inline-flex; align-items:center; justify-content:center; vertical-align:middle; }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">S</div>
+      <span style="font-size:0.95rem;font-weight:800;color:white;">SkillMatch</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="/dashboard.html" class="nav-link"><span class="icon icon-inline" id="nav-icon-home"></span> Dashboard</a>
+      <a href="/bookmarks.html" class="nav-link active"><span class="icon icon-inline" id="nav-icon-bm"></span> My Applications</a>
+      <a href="/profile.html" class="nav-link"><span class="icon icon-inline" id="nav-icon-prof"></span> My Profile</a>
+      <div class="sidebar-divider"></div>
+      <div class="nav-section-label">Management</div>
+      <a href="/admin.html" class="nav-link"><span class="icon icon-inline" id="nav-icon-adm"></span> Ingest &amp; Admin</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="student-chip" onclick="window.location.href='/profile.html'">
+        <div class="avatar" id="s-avatar">?</div>
+        <div class="min-w-0">
+          <div class="text-sm font-semibold text-white truncate" id="s-name">Loading...</div>
+          <div class="text-xs truncate" style="color:rgba(255,255,255,0.45)" id="s-meta">—</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN AREA -->
+  <div class="main-area">
+
+    <header class="top-bar">
+      <div class="flex items-center gap-3">
+        <h2 class="font-bold" style="font-size:1.1rem;margin:0;">Application Pipeline</h2>
+      </div>
+      <div class="flex items-center gap-3 ml-auto">
+        <a href="/dashboard.html" class="btn btn-primary btn-sm">+ Discover More</a>
+        <div class="avatar" id="h-avatar" onclick="window.location.href='/profile.html'" style="cursor:pointer;">?</div>
+      </div>
+    </header>
+
+    <div class="page-wrap">
+
+      <!-- Urgent alert -->
+      <div id="urgent-box" style="display:none;background:#fef2f2;border:1px solid #fecaca;border-radius:var(--radius-lg);padding:14px 18px;margin-bottom:20px;">
+        <div class="flex items-center gap-3">
+          <div id="urgent-icon" style="color:var(--red);"></div>
+          <div>
+            <div class="font-semibold text-red" id="urgent-msg">Upcoming Registration Deadline</div>
+            <div class="text-xs text-muted" id="urgent-sub">Tracked listings closing within 3 days</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pipeline tracker card -->
+      <div class="card mb-5">
+        <div class="flex items-center justify-between mb-4">
+          <h3 style="margin:0;font-size:1rem;">Candidate Funnel</h3>
+          <span class="text-xs text-muted" id="pipeline-total">0 tracked</span>
+        </div>
+        <div class="flex items-center gap-2" id="pipeline-stages" style="overflow-x:auto;padding-bottom:6px;"></div>
+      </div>
+
+      <!-- Filter tabs -->
+      <div class="flex items-center gap-2 mb-4" id="status-filters" style="overflow-x:auto;padding-bottom:4px;">
+        <button class="filter-pill active" onclick="setFilter('all', this)">All</button>
+        <button class="filter-pill" onclick="setFilter('saved', this)">Saved</button>
+        <button class="filter-pill" onclick="setFilter('applied', this)">Applied</button>
+        <button class="filter-pill" onclick="setFilter('shortlisted', this)">Shortlisted</button>
+        <button class="filter-pill" onclick="setFilter('selected', this)">Selected</button>
+      </div>
+
+      <!-- Applications List -->
+      <div id="apps-list" class="flex flex-col gap-3">
+        <div class="empty-state">
+          <div class="empty-title">Loading applications...</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="toast-tray" id="toast-tray"></div>
+
+<script>
+const API = 'http://localhost:5000';
+const pid = localStorage.getItem('sm_profile_id');
+let student = null, allOpps = [], applications = [], currentFilter = 'all';
+
+const STATUS_CONFIG = {
+  saved: { label:'Saved', cls:'status-saved' },
+  applied: { label:'Applied', cls:'status-applied' },
+  shortlisted: { label:'Shortlisted', cls:'status-shortlisted' },
+  selected: { label:'Selected', cls:'status-selected' },
+  rejected: { label:'Not Selected', cls:'status-rejected' }
+};
+
+document.addEventListener('DOMContentLoaded', async () => {
+  document.getElementById('nav-icon-home').innerHTML = ICONS.home;
+  document.getElementById('nav-icon-bm').innerHTML = ICONS.bookmark;
+  document.getElementById('nav-icon-prof').innerHTML = ICONS.user;
+  document.getElementById('nav-icon-adm').innerHTML = ICONS.analytics;
+  document.getElementById('urgent-icon').innerHTML = ICONS.alert;
+
+  if (!pid) { window.location.href = '/'; return; }
+  await loadData();
+});
+
+async function loadData() {
+  try {
+    const [pRes, oRes, aRes, bRes] = await Promise.all([
+      fetch(`${API}/api/profile/${pid}`),
+      fetch(`${API}/api/opportunities?profile_id=${pid}`),
+      fetch(`${API}/api/applications?profile_id=${pid}`),
+      fetch(`${API}/api/bookmarks?profile_id=${pid}`)
+    ]);
+
+    student = await pRes.json();
+    allOpps = await oRes.json();
+    const appsData = await aRes.json();
+    const bookmarkIds = await bRes.json();
+
+    const ini = (student.name || '?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    ['s-avatar','h-avatar'].forEach(id => { const e=document.getElementById(id); if(e) e.textContent=ini; });
+    document.getElementById('s-name').textContent = student.name;
+    document.getElementById('s-meta').textContent = `Year ${student.year} · ${student.branch}`;
+
+    const appMap = {};
+    appsData.forEach(a => { appMap[a.opp_id] = a; });
+    const combinedIds = new Set([...bookmarkIds, ...appsData.map(a => a.opp_id)]);
+
+    applications = [...combinedIds].map(id => {
+      const opp = allOpps.find(o => o.id === id);
+      if (!opp) return null;
+      const app = appMap[id] || { status: 'saved', applied_at: new Date().toISOString() };
+      return { opp, status: app.status || 'saved', applied_at: app.applied_at };
+    }).filter(Boolean);
+
+    renderPipeline();
+    renderList();
+    checkUrgent();
+  } catch (err) {
+    document.getElementById('apps-list').innerHTML = `
+      <div class="empty-state">
+        <div class="empty-title">Could not load application records</div>
+        <div class="empty-sub">Backend offline. Verify server is running on port 5000.</div>
+      </div>`;
+  }
+}
+
+function renderPipeline() {
+  const counts = { saved:0, applied:0, shortlisted:0, selected:0 };
+  applications.forEach(a => {
+    if (counts[a.status] !== undefined) counts[a.status]++;
+  });
+
+  document.getElementById('pipeline-total').textContent = `${applications.length} total`;
+
+  const stages = [
+    { key:'saved', label:'Saved' },
+    { key:'applied', label:'Applied' },
+    { key:'shortlisted', label:'Shortlisted' },
+    { key:'selected', label:'Selected' }
+  ];
+
+  document.getElementById('pipeline-stages').innerHTML = stages.map(st => `
+    <div class="pipeline-step">
+      <div class="pipeline-circle ${counts[st.key]>0?'active':''}">
+        ${counts[st.key]}
+      </div>
+      <div class="text-xs font-semibold" style="color:${counts[st.key]>0?'var(--text)':'var(--text-subtle)'};">${st.label}</div>
+    </div>
+  `).join('');
+}
+
+function checkUrgent() {
+  const urgent = applications.filter(a => {
+    const days = a.opp.match ? a.opp.match.daysLeft : 99;
+    return days >= 0 && days <= 3;
+  });
+  if (urgent.length > 0) {
+    document.getElementById('urgent-box').style.display = 'block';
+    document.getElementById('urgent-msg').textContent = `${urgent.length} tracked opportunity closing within 3 days`;
+    document.getElementById('urgent-sub').textContent = urgent.map(u => `${u.opp.title} (${u.opp.match.daysLeft}d remaining)`).join(' · ');
+  }
+}
+
+function setFilter(status, el) {
+  currentFilter = status;
+  document.querySelectorAll('.filter-pill').forEach(btn => btn.classList.remove('active'));
+  el.classList.add('active');
+  renderList();
+}
+
+function renderList() {
+  const list = document.getElementById('apps-list');
+  const filtered = currentFilter === 'all'
+    ? applications
+    : applications.filter(a => a.status === currentFilter);
+
+  if (filtered.length === 0) {
+    list.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-title">No applications in "${currentFilter}"</div>
+        <div class="empty-sub">Explore the opportunity catalog and save listings to monitor pipeline status.</div>
+        <a href="/dashboard.html" class="btn btn-primary btn-sm mt-3">Browse Feed →</a>
+      </div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map(item => {
+    const opp = item.opp;
+    const match = opp.match || { percentage: 70, matchLabel: 'Fit' };
+    const conf = STATUS_CONFIG[item.status] || STATUS_CONFIG.saved;
+
+    return `
+      <div class="app-card">
+        <div class="flex items-start justify-between gap-3">
+          <div class="flex items-start gap-3">
+            <div style="width:44px;height:44px;border-radius:var(--radius);background:${opp.orgColor||'#2563eb'};color:white;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1rem;flex-shrink:0;">
+              ${opp.orgInitials||'??'}
+            </div>
+            <div>
+              <div class="flex items-center gap-2 flex-wrap">
+                <a href="/opportunity.html?id=${opp.id}" class="font-bold hover:underline" style="font-size:1rem;color:var(--text);">${opp.title}</a>
+                <span class="status-badge ${conf.cls}">${conf.label}</span>
+              </div>
+              <div class="text-xs text-muted mt-1">
+                ${opp.org} · ${opp.type} · ${opp.location} · <strong style="color:var(--primary)">${match.percentage}% match</strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <select class="form-select text-xs" style="padding:5px 8px;width:auto;" onchange="updateStatus(${opp.id}, this.value)">
+              <option value="saved" ${item.status==='saved'?'selected':''}>Saved</option>
+              <option value="applied" ${item.status==='applied'?'selected':''}>Applied</option>
+              <option value="shortlisted" ${item.status==='shortlisted'?'selected':''}>Shortlisted</option>
+              <option value="selected" ${item.status==='selected'?'selected':''}>Selected</option>
+              <option value="rejected" ${item.status==='rejected'?'selected':''}>Rejected</option>
+            </select>
+            <button class="btn btn-ghost btn-sm" onclick="removeBookmark(${opp.id})" title="Remove bookmark" style="color:var(--red);">Remove</button>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between text-xs text-muted" style="border-top:1px solid var(--border);padding-top:10px;">
+          <div class="flex items-center gap-3">
+            <span>Deadline: <strong>${opp.deadline||'Open'}</strong></span>
+            <span>Compensation: <strong>${opp.stipend||'N/A'}</strong></span>
+          </div>
+          <div class="flex items-center gap-2">
+            <a href="/opportunity.html?id=${opp.id}" class="btn btn-secondary btn-sm">Analysis</a>
+            ${opp.applyUrl ? `<a href="${opp.applyUrl}" target="_blank" rel="noopener" class="btn btn-primary btn-sm">Application Portal ↗</a>` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function updateStatus(oppId, newStatus) {
+  try {
+    const res = await fetch(`${API}/api/apply`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ profile_id: pid, opp_id: oppId, status: newStatus })
+    });
+    if (res.ok) {
+      const app = applications.find(a => a.opp.id === oppId);
+      if (app) app.status = newStatus;
+      renderPipeline();
+      renderList();
+      toast(`Status updated: ${newStatus}`, 'success');
+    }
+  } catch {
+    toast('Error updating status', 'error');
+  }
+}
+
+async function removeBookmark(oppId) {
+  if (!confirm('Remove this opportunity from your tracking pipeline?')) return;
+  try {
+    const res = await fetch(`${API}/api/bookmarks`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ profile_id: pid, opp_id: oppId })
+    });
+    if (res.ok) {
+      applications = applications.filter(a => a.opp.id !== oppId);
+      renderPipeline();
+      renderList();
+      toast('Removed from tracking', 'info');
+    }
+  } catch {
+    toast('Error removing bookmark', 'error');
+  }
+}
+
+function toast(msg, type='info') {
+  const tray = document.getElementById('toast-tray');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.innerHTML = `<span>${type==='success'?ICONS.check:ICONS.alert}</span><span>${msg}</span>`;
+  tray.appendChild(t);
+  setTimeout(() => { t.style.animation='toastOut 0.3s ease forwards'; setTimeout(()=>t.remove(),300); }, 3000);
+}
+</script>
+</body>
+</html>

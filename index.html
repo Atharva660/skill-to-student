@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SkillMatch — Student Opportunity Platform</title>
+  <meta name="description" content="AI-powered skill-to-opportunity matching platform for engineering students." />
+  <link rel="stylesheet" href="css/styles.css" />
+  <script src="js/icons.js"></script>
+  <style>
+    .badge-iso { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:var(--radius-full); font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; background:var(--blue-50); color:var(--primary); border:1px solid var(--border-blue); }
+    .icon-box { width:40px; height:40px; border-radius:var(--radius); display:flex; align-items:center; justify-content:center; background:var(--blue-50); color:var(--primary); margin-bottom:12px; }
+  </style>
+</head>
+<body>
+
+<div class="landing-page">
+
+  <!-- Nav -->
+  <nav class="landing-nav">
+    <div class="landing-logo">
+      <div class="logo-mark">S</div>
+      <span class="logo-text">SkillMatch</span>
+    </div>
+    <div class="flex items-center gap-3">
+      <a href="/dashboard.html" class="btn btn-primary btn-sm">Go to Dashboard →</a>
+      <a href="/admin.html" class="btn btn-ghost btn-sm">Admin Portal</a>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="landing-hero">
+    <div class="hero-badge">
+      <span class="badge-dot"></span>
+      <span>PS-09 · Intelligent Opportunity Matching Engine</span>
+    </div>
+
+    <h1>
+      Never Miss a Hackathon<br/>
+      or Internship Again
+    </h1>
+
+    <p class="hero-sub">
+      Opportunities shouldn't get buried in messaging groups and unread emails.<br/>
+      SkillMatch connects your verified skills to live hackathons, fellowships, and internships with mathematical match scores.
+    </p>
+
+    <div class="hero-cta">
+      <button class="btn btn-primary btn-lg" onclick="showWizard()" id="start-btn">
+        Create Student Profile →
+      </button>
+      <a href="/dashboard.html" class="btn btn-secondary btn-lg">Explore Live Catalog</a>
+    </div>
+
+    <div class="hero-stats">
+      <div class="h-stat"><span class="h-stat-num">12+</span><span class="h-stat-lbl">Active Opportunities</span></div>
+      <div class="h-stat"><span class="h-stat-num">Multi-Signal</span><span class="h-stat-lbl">Matching Engine</span></div>
+      <div class="h-stat"><span class="h-stat-num">SQLite</span><span class="h-stat-lbl">Persistent Backend</span></div>
+      <div class="h-stat"><span class="h-stat-num">Instant</span><span class="h-stat-lbl">Application Pipeline</span></div>
+    </div>
+  </section>
+
+  <!-- Feature strip -->
+  <div class="feature-strip">
+    <div class="features-grid">
+      <div class="feature-item">
+        <div class="icon-box" id="f-icon-1"></div>
+        <div class="feature-name">Calibrated Match Scoring</div>
+        <div class="feature-desc">Every opportunity receives a normalized percentage score based on skills, academic standing, and eligibility.</div>
+      </div>
+      <div class="feature-item">
+        <div class="icon-box" id="f-icon-2"></div>
+        <div class="feature-name">Explainable Intelligence</div>
+        <div class="feature-desc">Understand exactly why an opportunity is recommended with line-by-line verification signals.</div>
+      </div>
+      <div class="feature-item">
+        <div class="icon-box" id="f-icon-3"></div>
+        <div class="feature-name">Skill Gap Analysis</div>
+        <div class="feature-desc">Dynamic radar visualization displaying candidate competencies vs. mandatory employer requirements.</div>
+      </div>
+      <div class="feature-item">
+        <div class="icon-box" id="f-icon-4"></div>
+        <div class="feature-name">Deadline Surveillance</div>
+        <div class="feature-desc">Priority status indicators for closing listings to ensure timely registration submission.</div>
+      </div>
+      <div class="feature-item">
+        <div class="icon-box" id="f-icon-5"></div>
+        <div class="feature-name">Career Copilot</div>
+        <div class="feature-desc">AI assistant queryable on demand to filter highest leverage opportunities and missing credentials.</div>
+      </div>
+      <div class="feature-item">
+        <div class="icon-box" id="f-icon-6"></div>
+        <div class="feature-name">Message Ingestion</div>
+        <div class="feature-desc">Paste raw announcement blurbs from messaging channels to parse and index structured listings instantly.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- WIZARD -->
+  <div class="wizard-wrap" id="wizard-section" style="display:none;">
+    <div class="wizard-box">
+
+      <!-- Steps -->
+      <div class="wizard-steps-bar" id="wsteps">
+        <div class="wstep active" data-s="1">
+          <div class="wdot">1</div>
+          <span class="wlabel">Academic</span>
+        </div>
+        <div class="wstep" data-s="2">
+          <div class="wdot">2</div>
+          <span class="wlabel">Competencies</span>
+        </div>
+        <div class="wstep" data-s="3">
+          <div class="wdot">3</div>
+          <span class="wlabel">Interests</span>
+        </div>
+      </div>
+
+      <!-- Pane 1 -->
+      <div class="wpane active" id="wp-1">
+        <div>
+          <h2>Student Details</h2>
+          <p class="mt-1">Provide your academic status to calibrate eligibility filters.</p>
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label" for="w-name">Full Name *</label>
+            <input class="form-input" id="w-name" type="text" placeholder="e.g. Atharva Sharma" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="w-email">Email Address</label>
+            <input class="form-input" id="w-email" type="email" placeholder="you@college.edu" />
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label" for="w-year">Current Year of Study *</label>
+            <select class="form-select" id="w-year">
+              <option value="">Select Year...</option>
+              <option value="1">1st Year</option>
+              <option value="2">2nd Year</option>
+              <option value="3">3rd Year (Pre-final)</option>
+              <option value="4">4th Year (Final)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="w-branch">Academic Branch *</label>
+            <select class="form-select" id="w-branch">
+              <option value="">Select Branch...</option>
+              <option value="CSE">Computer Science (CSE)</option>
+              <option value="IT">Information Technology (IT)</option>
+              <option value="ECE">Electronics (ECE)</option>
+              <option value="EEE">Electrical (EEE)</option>
+              <option value="Mechanical">Mechanical Engineering</option>
+              <option value="Civil">Civil Engineering</option>
+              <option value="Mathematics">Mathematics / Data</option>
+              <option value="Statistics">Statistics</option>
+              <option value="Design">Design</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label" for="w-cgpa">Current CGPA (0 - 10)</label>
+            <input class="form-input" id="w-cgpa" type="number" step="0.01" min="0" max="10" placeholder="e.g. 8.4" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="w-college">College / University</label>
+            <input class="form-input" id="w-college" type="text" placeholder="e.g. IIT Delhi" />
+          </div>
+        </div>
+        <div class="wizard-footer">
+          <button class="btn btn-ghost" onclick="hideWizard()">Cancel</button>
+          <button class="btn btn-primary" onclick="goStep(2)">Continue to Skills →</button>
+        </div>
+      </div>
+
+      <!-- Pane 2 -->
+      <div class="wpane" id="wp-2">
+        <div>
+          <h2>Technical Competencies</h2>
+          <p class="mt-1">Select your skills or upload a resume to automatically extract verified competencies.</p>
+        </div>
+
+        <!-- Resume Upload -->
+        <div style="background:var(--blue-50);border:1.5px dashed var(--border-blue);border-radius:var(--radius-lg);padding:18px;margin-bottom:12px;">
+          <div class="flex items-center gap-3 mb-2">
+            <div id="resume-icon-wrap" style="color:var(--primary);"></div>
+            <div>
+              <div class="font-semibold text-sm">Resume Skill Auto-Extraction</div>
+              <div class="text-xs text-muted">Upload a PDF or TXT resume to auto-populate competencies via lexical parsing</div>
+            </div>
+          </div>
+          <div class="flex gap-2 items-center">
+            <input type="file" id="resume-file" accept=".pdf,.txt" class="form-input" style="font-size:0.8rem;padding:6px 10px;" onchange="parseResume(this)" />
+            <div id="resume-status" class="text-xs text-muted"></div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <div class="search-wrap">
+            <span class="search-icon" id="search-icon-wrap"></span>
+            <input class="form-input" id="skill-search" type="text" placeholder="Filter skills (e.g. Python, React, SQL)..." oninput="filterSkills()" />
+          </div>
+        </div>
+        <div>
+          <div class="flex justify-between mb-2">
+            <span class="caption">Click competency to toggle</span>
+            <span class="caption font-semibold text-blue" id="skill-count">0 selected</span>
+          </div>
+          <div class="chips" id="skill-chips" style="max-height:240px;overflow-y:auto;padding-right:4px;"></div>
+        </div>
+        <div class="wizard-footer">
+          <button class="btn btn-secondary" onclick="goStep(1)">← Back</button>
+          <button class="btn btn-primary" onclick="goStep(3)">Continue to Interests →</button>
+        </div>
+      </div>
+
+      <!-- Pane 3 -->
+      <div class="wpane" id="wp-3">
+        <div>
+          <h2>Domain Interests</h2>
+          <p class="mt-1">Target fields you want prioritized in your match feed.</p>
+        </div>
+        <div class="chips" id="interest-chips"></div>
+
+        <!-- Preview -->
+        <div style="background:var(--blue-50);border:1.5px solid var(--blue-100);border-radius:var(--radius-lg);padding:14px 16px;">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="text-sm font-semibold text-blue">Profile Confirmation</span>
+          </div>
+          <div id="preview-text" class="text-sm text-muted"></div>
+        </div>
+
+        <div class="wizard-footer">
+          <button class="btn btn-secondary" onclick="goStep(2)">← Back</button>
+          <button class="btn btn-primary btn-lg" onclick="saveProfile()" id="save-btn">
+            Generate Match Feed →
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<div class="toast-tray" id="toast-tray"></div>
+
+<script>
+const ALL_SKILLS = ["Python","JavaScript","Java","C++","C","TypeScript","Go","MATLAB","React","Vue.js","HTML/CSS","Next.js","Node.js","Django","FastAPI","Express.js","Data Structures","Algorithms","Problem Solving","System Design","OOP","Machine Learning","Deep Learning","TensorFlow","PyTorch","NLP","Computer Vision","Statistics","Mathematics","Linear Algebra","SQL","MongoDB","PostgreSQL","Redis","Firebase","Cloud","AWS","Azure","GCP","Docker","Kubernetes","Linux","Git","Open Source","Figma","UI/UX","Signal Processing","IoT","Blockchain","Physics","Finance","Communication","Leadership","Team Work","Public Speaking","Community Building","Event Management","Presentation","APIs","Web Development","Any Programming Language"];
+const INTERESTS = ["AI/ML","Web Development","Open Source","Hackathons","Research","FinTech","Cloud Computing","Cybersecurity","Mobile Development","Data Science","Blockchain","IoT","Robotics","Space Tech","Game Development","Community Building"];
+const selectedSkills = new Set(), selectedInterests = new Set();
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Populate feature icons from ICONS
+  document.getElementById('f-icon-1').innerHTML = ICONS.target;
+  document.getElementById('f-icon-2').innerHTML = ICONS.sparkle;
+  document.getElementById('f-icon-3').innerHTML = ICONS.analytics;
+  document.getElementById('f-icon-4').innerHTML = ICONS.clock;
+  document.getElementById('f-icon-5').innerHTML = ICONS.compass;
+  document.getElementById('f-icon-6').innerHTML = ICONS.bolt;
+
+  const resWrap = document.getElementById('resume-icon-wrap');
+  if (resWrap) resWrap.innerHTML = ICONS.upload;
+  const sWrap = document.getElementById('search-icon-wrap');
+  if (sWrap) sWrap.innerHTML = ICONS.search;
+
+  if (localStorage.getItem('sm_profile_id')) {
+    window.location.href = '/dashboard.html';
+    return;
+  }
+  renderSkillChips(ALL_SKILLS);
+  renderInterestChips();
+});
+
+function showWizard() {
+  document.getElementById('wizard-section').style.display = 'block';
+  document.getElementById('wizard-section').scrollIntoView({ behavior:'smooth' });
+}
+function hideWizard() {
+  document.getElementById('wizard-section').style.display = 'none';
+}
+
+function goStep(n) {
+  if (n === 2) {
+    const name = document.getElementById('w-name').value.trim();
+    const year = document.getElementById('w-year').value;
+    const branch = document.getElementById('w-branch').value;
+    if (!name || !year || !branch) {
+      toast('Please enter Name, Year, and Branch', 'error');
+      return;
+    }
+  }
+  if (n === 3) {
+    if (selectedSkills.size === 0) {
+      toast('Please select at least 1 skill', 'error');
+      return;
+    }
+    updatePreview();
+  }
+
+  document.querySelectorAll('.wpane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.wstep').forEach(s => {
+    const sn = parseInt(s.dataset.s);
+    s.classList.toggle('active', sn === n);
+    s.classList.toggle('done', sn < n);
+  });
+  document.getElementById(`wp-${n}`).classList.add('active');
+}
+
+function renderSkillChips(list) {
+  const container = document.getElementById('skill-chips');
+  container.innerHTML = '';
+  list.forEach(skill => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `chip ${selectedSkills.has(skill) ? 'selected' : ''}`;
+    btn.textContent = skill;
+    btn.dataset.skill = skill.toLowerCase();
+    btn.onclick = () => {
+      if (selectedSkills.has(skill)) {
+        selectedSkills.delete(skill);
+        btn.classList.remove('selected');
+      } else {
+        selectedSkills.add(skill);
+        btn.classList.add('selected');
+      }
+      document.getElementById('skill-count').textContent = `${selectedSkills.size} selected`;
+    };
+    container.appendChild(btn);
+  });
+}
+
+function filterSkills() {
+  const q = document.getElementById('skill-search').value.toLowerCase();
+  document.querySelectorAll('#skill-chips .chip').forEach(c => {
+    c.style.display = c.dataset.skill.includes(q) ? '' : 'none';
+  });
+}
+
+function renderInterestChips() {
+  const container = document.getElementById('interest-chips');
+  container.innerHTML = '';
+  INTERESTS.forEach(i => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `chip ${selectedInterests.has(i) ? 'selected' : ''}`;
+    btn.textContent = i;
+    btn.onclick = () => {
+      if (selectedInterests.has(i)) {
+        selectedInterests.delete(i);
+        btn.classList.remove('selected');
+      } else {
+        selectedInterests.add(i);
+        btn.classList.add('selected');
+      }
+      updatePreview();
+    };
+    container.appendChild(btn);
+  });
+}
+
+function updatePreview() {
+  const name = document.getElementById('w-name').value.trim();
+  const year = document.getElementById('w-year').value;
+  const branch = document.getElementById('w-branch').value;
+  const cgpa = document.getElementById('w-cgpa').value;
+  const college = document.getElementById('w-college').value.trim();
+  const skills = [...selectedSkills].slice(0, 5).join(', ');
+  const more = selectedSkills.size > 5 ? ` +${selectedSkills.size - 5} more` : '';
+
+  document.getElementById('preview-text').innerHTML = `
+    <strong>${name}</strong> · Year ${year} ${branch} ${college ? `· ${college}` : ''} ${cgpa ? `· CGPA ${cgpa}` : ''}<br/>
+    <span style="color:var(--text);margin-top:4px;display:inline-block;">Skills: ${skills}${more}</span>
+  `;
+}
+
+async function parseResume(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const status = document.getElementById('resume-status');
+  status.textContent = 'Parsing resume...';
+  status.style.color = 'var(--primary)';
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    const res = await fetch('http://localhost:5000/api/resume', { method: 'POST', body: formData });
+    const d = await res.json();
+    if (d.skills && d.skills.length > 0) {
+      d.skills.forEach(skill => selectedSkills.add(skill));
+      renderSkillChips(ALL_SKILLS);
+      d.skills.filter(s => !ALL_SKILLS.includes(s)).forEach(s => {
+        const extra = document.createElement('button');
+        extra.className = 'chip selected';
+        extra.textContent = s;
+        extra.onclick = () => { selectedSkills.delete(s); extra.remove(); document.getElementById('skill-count').textContent = `${selectedSkills.size} selected`; };
+        document.getElementById('skill-chips').prepend(extra);
+      });
+      document.getElementById('skill-count').textContent = `${selectedSkills.size} selected`;
+
+      const m = d.metadata || {};
+      if (m.cgpa && !document.getElementById('w-cgpa').value) document.getElementById('w-cgpa').value = m.cgpa;
+      if (m.year && !document.getElementById('w-year').value) document.getElementById('w-year').value = m.year;
+      if (m.branch && !document.getElementById('w-branch').value) document.getElementById('w-branch').value = m.branch;
+
+      status.textContent = `Extracted ${d.skills.length} skills from resume`;
+      status.style.color = 'var(--green)';
+      toast(`Extracted ${d.skills.length} skills from resume`, 'success');
+    } else {
+      status.textContent = 'No matching technical skills identified';
+      status.style.color = 'var(--amber)';
+    }
+  } catch {
+    status.textContent = 'Backend offline — select competencies manually';
+    status.style.color = 'var(--red)';
+  }
+}
+
+async function saveProfile() {
+  const btn = document.getElementById('save-btn');
+  btn.textContent = 'Registering Profile...'; btn.disabled = true;
+
+  const profile = {
+    name: document.getElementById('w-name').value.trim(),
+    email: document.getElementById('w-email').value.trim(),
+    year: parseInt(document.getElementById('w-year').value),
+    branch: document.getElementById('w-branch').value,
+    cgpa: parseFloat(document.getElementById('w-cgpa').value) || 0,
+    college: document.getElementById('w-college').value.trim(),
+    skills: [...selectedSkills],
+    interests: [...selectedInterests]
+  };
+
+  try {
+    const res = await fetch('http://localhost:5000/api/profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(profile)
+    });
+    const data = await res.json();
+    if (data.id) {
+      localStorage.setItem('sm_profile_id', data.id);
+      toast('Profile saved. Loading matching catalog...', 'success');
+      setTimeout(() => window.location.href = '/dashboard.html', 800);
+    } else { throw new Error(); }
+  } catch {
+    btn.textContent = 'Generate Match Feed →'; btn.disabled = false;
+    toast('Error connecting to backend service', 'error');
+  }
+}
+
+function toast(msg, type='info') {
+  const tray = document.getElementById('toast-tray');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.innerHTML = `<span>${type==='success' ? ICONS.check : ICONS.alert}</span><span>${msg}</span>`;
+  tray.appendChild(t);
+  setTimeout(() => { t.style.animation='toastOut 0.3s ease forwards'; setTimeout(()=>t.remove(),300); }, 3500);
+}
+</script>
+</body>
+</html>

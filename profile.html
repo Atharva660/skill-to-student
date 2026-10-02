@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Student Profile — SkillMatch</title>
+  <meta name="description" content="Manage your student profile, verified skills, and academic eligibility."/>
+  <link rel="stylesheet" href="css/styles.css"/>
+  <script src="js/icons.js"></script>
+  <style>
+    .upload-zone { border:2px dashed var(--border-blue); background:var(--blue-50); border-radius:var(--radius-lg); padding:24px; text-align:center; cursor:pointer; transition:all var(--fast); }
+    .upload-zone:hover { border-color:var(--primary); background:#eff6ff; }
+    .icon-inline { display:inline-flex; align-items:center; justify-content:center; vertical-align:middle; }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">S</div>
+      <span style="font-size:0.95rem;font-weight:800;color:white;">SkillMatch</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="/dashboard.html" class="nav-link"><span class="icon icon-inline" id="nav-icon-home"></span> Dashboard</a>
+      <a href="/bookmarks.html" class="nav-link"><span class="icon icon-inline" id="nav-icon-bm"></span> My Applications</a>
+      <a href="/profile.html" class="nav-link active"><span class="icon icon-inline" id="nav-icon-prof"></span> My Profile</a>
+      <div class="sidebar-divider"></div>
+      <div class="nav-section-label">Management</div>
+      <a href="/admin.html" class="nav-link"><span class="icon icon-inline" id="nav-icon-adm"></span> Ingest &amp; Admin</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="student-chip">
+        <div class="avatar" id="s-avatar">?</div>
+        <div class="min-w-0">
+          <div class="text-sm font-semibold text-white truncate" id="s-name">Loading...</div>
+          <div class="text-xs truncate" style="color:rgba(255,255,255,0.45)" id="s-meta">—</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN AREA -->
+  <div class="main-area">
+
+    <header class="top-bar">
+      <h2 class="font-bold" style="font-size:1.1rem;margin:0;">Profile &amp; Credentials</h2>
+      <div class="flex items-center gap-3 ml-auto">
+        <button class="btn btn-secondary btn-sm" onclick="logout()">Reset Session</button>
+        <button class="btn btn-primary btn-sm" onclick="saveProfile()" id="save-btn-top">Save Profile Changes</button>
+      </div>
+    </header>
+
+    <div class="page-wrap">
+
+      <!-- Header card -->
+      <div class="card mb-6" style="background:linear-gradient(135deg, #ffffff, #eff6ff);border-color:var(--border-blue);">
+        <div class="flex items-center gap-4 flex-wrap">
+          <div class="avatar-xl" id="profile-avatar" style="border:3px solid var(--border-blue);background:linear-gradient(135deg,var(--primary),#3b82f6);">?</div>
+          <div style="flex:1;min-width:200px;">
+            <div class="flex items-center gap-3">
+              <h2 id="p-name" style="margin:0;font-size:1.4rem;">Student Profile</h2>
+              <span class="badge badge-blue" id="p-badge">Year 2</span>
+            </div>
+            <div class="text-sm text-muted mt-1" id="p-sub">Branch · Institution</div>
+            <div class="text-xs text-muted mt-1" id="p-email">student@institution.edu</div>
+          </div>
+          <div style="text-align:right;">
+            <div class="text-xs text-muted">Verified Credentials</div>
+            <div style="font-size:2rem;font-weight:900;color:var(--primary);" id="p-skill-count">0</div>
+            <div class="text-xs text-muted">Skills Registered</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Two column layout -->
+      <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:24px;align-items:start;">
+
+        <!-- Left: Basic info & Resume Upload -->
+        <div class="flex flex-col gap-5">
+
+          <!-- Resume AI Auto-Extractor -->
+          <div class="card">
+            <div class="flex items-center gap-2 mb-2">
+              <div id="resume-icon-box" style="color:var(--primary);"></div>
+              <h3 style="margin:0;font-size:1rem;">Automated Resume Skill Ingestion</h3>
+            </div>
+            <p class="text-xs text-muted mb-3">Upload your updated PDF or TXT resume to parse and append newly acquired technical competencies.</p>
+
+            <div class="upload-zone" onclick="document.getElementById('profile-resume-input').click()">
+              <input type="file" id="profile-resume-input" accept=".pdf,.txt" style="display:none;" onchange="uploadResume(this)"/>
+              <div id="upload-icon-zone" style="margin-bottom:8px;color:var(--primary);"></div>
+              <div class="text-sm font-semibold text-blue">Select Resume File (PDF / TXT)</div>
+              <div class="text-xs text-muted mt-1">Processed using India Runs BM25 token extraction</div>
+              <div id="upload-status" class="text-xs font-semibold mt-2" style="display:none;"></div>
+            </div>
+          </div>
+
+          <!-- Academic & Contact info -->
+          <div class="card">
+            <h3 class="mb-4" style="font-size:1rem;">Academic Credentials</h3>
+            <div class="flex flex-col gap-4">
+              <div class="grid-2">
+                <div class="form-group">
+                  <label class="form-label" for="edit-name">Candidate Name</label>
+                  <input class="form-input" id="edit-name" type="text" placeholder="Candidate full name"/>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="edit-email">Official Email</label>
+                  <input class="form-input" id="edit-email" type="email" placeholder="student@college.edu"/>
+                </div>
+              </div>
+
+              <div class="grid-3">
+                <div class="form-group">
+                  <label class="form-label" for="edit-year">Year of Study</label>
+                  <select class="form-select" id="edit-year">
+                    <option value="1">1st Year</option>
+                    <option value="2">2nd Year</option>
+                    <option value="3">3rd Year</option>
+                    <option value="4">4th Year</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="edit-branch">Discipline / Branch</label>
+                  <select class="form-select" id="edit-branch">
+                    <option value="CSE">CSE</option>
+                    <option value="IT">IT</option>
+                    <option value="ECE">ECE</option>
+                    <option value="EEE">EEE</option>
+                    <option value="Mechanical">Mechanical</option>
+                    <option value="Civil">Civil</option>
+                    <option value="Mathematics">Mathematics</option>
+                    <option value="Statistics">Statistics</option>
+                    <option value="Design">Design</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="edit-cgpa">CGPA (0 - 10 Scale)</label>
+                  <input class="form-input" id="edit-cgpa" type="number" step="0.01" min="0" max="10" placeholder="8.5"/>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="edit-college">Institution / College</label>
+                <input class="form-input" id="edit-college" type="text" placeholder="e.g. IIT Delhi"/>
+              </div>
+            </div>
+          </div>
+
+          <!-- Skills Selection -->
+          <div class="card">
+            <div class="flex items-center justify-between mb-3">
+              <div>
+                <h3 style="margin:0;font-size:1rem;">Verified Competencies</h3>
+                <span class="text-xs text-muted" id="skill-counter">0 skills selected</span>
+              </div>
+              <input type="text" class="form-input text-xs" style="max-width:180px;padding:6px 10px;" placeholder="Filter skills..." id="skill-filter-inp" oninput="filterSkillChips()"/>
+            </div>
+            <div class="chips" id="skills-container" style="max-height:220px;overflow-y:auto;padding-right:4px;"></div>
+          </div>
+
+          <!-- Interests Selection -->
+          <div class="card">
+            <div class="mb-3">
+              <h3 style="margin:0;font-size:1rem;">Target Domains &amp; Interests</h3>
+              <p class="text-xs text-muted mt-1">Select domains for weighted match boost</p>
+            </div>
+            <div class="chips" id="interests-container"></div>
+          </div>
+
+          <div>
+            <button class="btn btn-primary w-full" onclick="saveProfile()" id="save-btn-bottom">Save Profile &amp; Recalibrate Scores</button>
+          </div>
+
+        </div>
+
+        <!-- Right: Matching summary & Opportunities Overview -->
+        <div class="flex flex-col gap-5">
+
+          <div class="card" style="background:#f8fafc;">
+            <h3 class="mb-3" style="font-size:1rem;">Match Catalog Analytics</h3>
+            <div class="flex flex-col gap-3">
+              <div class="flex justify-between text-sm">
+                <span class="text-muted">Total Opportunities in Catalog</span>
+                <strong id="stat-total-opps">—</strong>
+              </div>
+              <div class="flex justify-between text-sm">
+                <span class="text-muted">Eligibility Confirmed</span>
+                <strong class="text-green" id="stat-eligible-opps">—</strong>
+              </div>
+              <div class="flex justify-between text-sm">
+                <span class="text-muted">Prime Fit (≥ 70%)</span>
+                <strong class="text-blue" id="stat-high-match">—</strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3 class="mb-2" style="font-size:1rem;">In-Demand Competency Frequency</h3>
+            <p class="text-xs text-muted mb-3">Most requested skills across active listings:</p>
+            <div class="flex flex-col gap-2" id="demand-skills-list"></div>
+          </div>
+
+          <div class="card" style="border-color:#fecaca;background:#fff5f5;">
+            <h4 style="color:var(--red);margin:0 0 6px;">Session Control</h4>
+            <p class="text-xs text-muted mb-3">Clear cached profile tokens and start with a fresh student identity.</p>
+            <button class="btn btn-ghost btn-sm" onclick="logout()" style="color:var(--red);border-color:#fca5a5;">Clear Profile &amp; Exit</button>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="toast-tray" id="toast-tray"></div>
+
+<script>
+const API = 'http://localhost:5000';
+const pid = localStorage.getItem('sm_profile_id');
+let student = null, allOpps = [];
+
+const ALL_SKILLS = ["Python","JavaScript","Java","C++","C","TypeScript","Go","MATLAB","React","Vue.js","HTML/CSS","Next.js","Node.js","Django","FastAPI","Express.js","Data Structures","Algorithms","Problem Solving","System Design","OOP","Machine Learning","Deep Learning","TensorFlow","PyTorch","NLP","Computer Vision","Statistics","Mathematics","Linear Algebra","SQL","MongoDB","PostgreSQL","Redis","Firebase","Cloud","AWS","Azure","GCP","Docker","Kubernetes","Linux","Git","Open Source","Figma","UI/UX","Signal Processing","IoT","Blockchain","Physics","Finance","Communication","Leadership","Team Work","Public Speaking","Community Building","Event Management","Presentation","APIs","Web Development","Any Programming Language"];
+const ALL_INTERESTS = ["AI/ML","Web Development","Open Source","Hackathons","Research","FinTech","Cloud Computing","Cybersecurity","Mobile Development","Data Science","Blockchain","IoT","Robotics","Space Tech","Game Development","Community Building"];
+
+let selectedSkills = new Set();
+let selectedInterests = new Set();
+
+document.addEventListener('DOMContentLoaded', async () => {
+  document.getElementById('nav-icon-home').innerHTML = ICONS.home;
+  document.getElementById('nav-icon-bm').innerHTML = ICONS.bookmark;
+  document.getElementById('nav-icon-prof').innerHTML = ICONS.user;
+  document.getElementById('nav-icon-adm').innerHTML = ICONS.analytics;
+  document.getElementById('resume-icon-box').innerHTML = ICONS.file;
+  document.getElementById('upload-icon-zone').innerHTML = ICONS.upload;
+
+  if (!pid) { window.location.href = '/'; return; }
+  await loadProfile();
+});
+
+async function loadProfile() {
+  try {
+    const [pRes, oRes] = await Promise.all([
+      fetch(`${API}/api/profile/${pid}`),
+      fetch(`${API}/api/opportunities?profile_id=${pid}`)
+    ]);
+
+    student = await pRes.json();
+    allOpps = await oRes.json();
+
+    const ini = (student.name || '?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    ['s-avatar','profile-avatar'].forEach(id => { const e=document.getElementById(id); if(e) e.textContent=ini; });
+    document.getElementById('s-name').textContent = student.name;
+    document.getElementById('s-meta').textContent = `Year ${student.year} · ${student.branch}`;
+
+    document.getElementById('p-name').textContent = student.name;
+    document.getElementById('p-badge').textContent = `Year ${student.year} · ${student.branch}`;
+    document.getElementById('p-sub').textContent = `${student.branch} · ${student.college || 'Engineering Institution'}`;
+    document.getElementById('p-email').textContent = student.email || 'student@campus.edu';
+
+    document.getElementById('edit-name').value = student.name || '';
+    document.getElementById('edit-email').value = student.email || '';
+    document.getElementById('edit-year').value = student.year || 2;
+    document.getElementById('edit-branch').value = student.branch || 'CSE';
+    document.getElementById('edit-cgpa').value = student.cgpa || '';
+    document.getElementById('edit-college').value = student.college || '';
+
+    selectedSkills = new Set(student.skills || []);
+    selectedInterests = new Set(student.interests || []);
+
+    renderSkillChips();
+    renderInterestChips();
+    updateSkillCounter();
+    renderStats();
+  } catch (err) {
+    toast('Error loading profile from server', 'error');
+  }
+}
+
+function renderSkillChips() {
+  const container = document.getElementById('skills-container');
+  container.innerHTML = '';
+  const combined = Array.from(new Set([...ALL_SKILLS, ...selectedSkills]));
+
+  combined.forEach(skill => {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = `chip ${selectedSkills.has(skill) ? 'selected' : ''}`;
+    chip.textContent = skill;
+    chip.dataset.name = skill.toLowerCase();
+    chip.onclick = () => {
+      if (selectedSkills.has(skill)) {
+        selectedSkills.delete(skill);
+        chip.classList.remove('selected');
+      } else {
+        selectedSkills.add(skill);
+        chip.classList.add('selected');
+      }
+      updateSkillCounter();
+    };
+    container.appendChild(chip);
+  });
+}
+
+function filterSkillChips() {
+  const q = document.getElementById('skill-filter-inp').value.toLowerCase();
+  document.querySelectorAll('#skills-container .chip').forEach(ch => {
+    ch.style.display = ch.dataset.name.includes(q) ? '' : 'none';
+  });
+}
+
+function renderInterestChips() {
+  const container = document.getElementById('interests-container');
+  container.innerHTML = '';
+  ALL_INTERESTS.forEach(int => {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = `chip ${selectedInterests.has(int) ? 'selected' : ''}`;
+    chip.textContent = int;
+    chip.onclick = () => {
+      if (selectedInterests.has(int)) {
+        selectedInterests.delete(int);
+        chip.classList.remove('selected');
+      } else {
+        selectedInterests.add(int);
+        chip.classList.add('selected');
+      }
+    };
+    container.appendChild(chip);
+  });
+}
+
+function updateSkillCounter() {
+  document.getElementById('skill-counter').textContent = `${selectedSkills.size} skills selected`;
+  document.getElementById('p-skill-count').textContent = selectedSkills.size;
+}
+
+function renderStats() {
+  document.getElementById('stat-total-opps').textContent = allOpps.length;
+  const eligible = allOpps.filter(o => o.match && o.match.eligible);
+  document.getElementById('stat-eligible-opps').textContent = eligible.length;
+  const high = allOpps.filter(o => o.match && o.match.percentage >= 70);
+  document.getElementById('stat-high-match').textContent = high.length;
+
+  const demand = {};
+  allOpps.forEach(o => {
+    (o.requiredSkills || []).forEach(s => {
+      demand[s] = (demand[s] || 0) + 1;
+    });
+  });
+  const sorted = Object.entries(demand).sort((a,b) => b[1] - a[1]).slice(0, 5);
+  const list = document.getElementById('demand-skills-list');
+  list.innerHTML = sorted.map(([s, count]) => `
+    <div class="flex items-center justify-between text-xs">
+      <span>${s}</span>
+      <span class="badge ${selectedSkills.has(s)?'badge-green':'badge-blue'}">${count} listings ${selectedSkills.has(s)?'✓ (Verified)':''}</span>
+    </div>
+  `).join('');
+}
+
+async function uploadResume(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const status = document.getElementById('upload-status');
+  status.style.display = 'block';
+  status.textContent = 'Analyzing resume tokens...';
+  status.style.color = 'var(--primary)';
+
+  const fd = new FormData();
+  fd.append('file', file);
+
+  try {
+    const res = await fetch(`${API}/api/resume`, { method: 'POST', body: fd });
+    const data = await res.json();
+
+    if (data.skills && data.skills.length > 0) {
+      let added = 0;
+      data.skills.forEach(s => {
+        if (!selectedSkills.has(s)) {
+          selectedSkills.add(s);
+          added++;
+        }
+      });
+
+      if (data.metadata) {
+        if (data.metadata.cgpa && !document.getElementById('edit-cgpa').value) {
+          document.getElementById('edit-cgpa').value = data.metadata.cgpa;
+        }
+        if (data.metadata.year) {
+          document.getElementById('edit-year').value = data.metadata.year;
+        }
+        if (data.metadata.branch) {
+          document.getElementById('edit-branch').value = data.metadata.branch;
+        }
+      }
+
+      renderSkillChips();
+      updateSkillCounter();
+      status.textContent = `Extracted ${data.skills.length} skills (${added} new registered)`;
+      status.style.color = 'var(--green)';
+      toast(`Resume parsed: ${added} new competencies added`, 'success');
+    } else {
+      status.textContent = 'No technical competencies recognized in resume';
+      status.style.color = 'var(--amber)';
+    }
+  } catch {
+    status.textContent = 'Upload processing failed';
+    status.style.color = 'var(--red)';
+    toast('Resume upload failed', 'error');
+  }
+}
+
+async function saveProfile() {
+  const btnTop = document.getElementById('save-btn-top');
+  const btnBottom = document.getElementById('save-btn-bottom');
+  btnTop.textContent = 'Saving...'; btnTop.disabled = true;
+  btnBottom.textContent = 'Saving...'; btnBottom.disabled = true;
+
+  const payload = {
+    id: pid,
+    name: document.getElementById('edit-name').value.trim() || 'Student',
+    email: document.getElementById('edit-email').value.trim(),
+    year: parseInt(document.getElementById('edit-year').value),
+    branch: document.getElementById('edit-branch').value,
+    cgpa: parseFloat(document.getElementById('edit-cgpa').value) || 0,
+    college: document.getElementById('edit-college').value.trim(),
+    skills: Array.from(selectedSkills),
+    interests: Array.from(selectedInterests)
+  };
+
+  try {
+    const res = await fetch(`${API}/api/profile`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const d = await res.json();
+    if (d.success) {
+      toast('Profile credentials updated successfully', 'success');
+      setTimeout(() => window.location.reload(), 600);
+    }
+  } catch {
+    toast('Error connecting to profile storage', 'error');
+  } finally {
+    btnTop.textContent = 'Save Profile Changes'; btnTop.disabled = false;
+    btnBottom.textContent = 'Save Profile & Recalibrate Scores'; btnBottom.disabled = false;
+  }
+}
+
+function logout() {
+  if (confirm('Clear local profile and return to start?')) {
+    localStorage.removeItem('sm_profile_id');
+    window.location.href = '/';
+  }
+}
+
+function toast(msg, type='info') {
+  const tray = document.getElementById('toast-tray');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.innerHTML = `<span>${type==='success'?ICONS.check:ICONS.alert}</span><span>${msg}</span>`;
+  tray.appendChild(t);
+  setTimeout(() => { t.style.animation='toastOut 0.3s ease forwards'; setTimeout(()=>t.remove(),300); }, 3000);
+}
+</script>
+</body>
+</html>
