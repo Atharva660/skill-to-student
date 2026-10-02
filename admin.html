@@ -38,7 +38,6 @@
     <div class="mb-3" style="text-align:left;">
       <label class="label mb-1" style="display:block;">Passcode</label>
       <input type="password" id="admin-pass-inp" class="form-input text-sm" placeholder="Enter administrator passcode" onkeydown="if(event.key==='Enter') verifyAdminAuth()" autofocus />
-      <div class="text-xs text-muted mt-1">Default demo passcode: <strong>admin123</strong></div>
     </div>
     <div id="admin-auth-err" class="text-xs text-red mb-3" style="display:none;padding:6px;background:#fef2f2;border-radius:var(--radius);border:1px solid #fecaca;"></div>
     <button class="btn btn-primary w-full mb-3" onclick="verifyAdminAuth()" id="admin-auth-btn">Authenticate &amp; Unlock Portal →</button>
