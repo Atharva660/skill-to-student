@@ -167,7 +167,7 @@ Flipkart GRID 6.0 national engineering challenge!
 <div class="toast-tray" id="toast-tray"></div>
 
 <script>
-const API = 'http://localhost:5000';
+const API = window.location.origin;
 let oppChart = null, branchChart = null;
 
 const SAMPLE_WHATSAPP_MSG = `*🚨 Flipkart GRID 6.0 — National Engineering Challenge*
@@ -246,8 +246,10 @@ function adminSignOut() {
   sessionStorage.removeItem('sm_admin_auth');
   window.location.reload();
 }
-
-document.addEventListener('DOMContentLoaded', () => {
+
+
+document.addEventListener('DOMContentLoaded', () => {
+
   checkAdminAuth();
   document.getElementById('nav-icon-home').innerHTML = ICONS.home;
   document.getElementById('nav-icon-bm').innerHTML = ICONS.bookmark;
