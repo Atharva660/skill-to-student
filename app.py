@@ -27,8 +27,44 @@ CORS(app)
 BASE = os.path.dirname(os.path.abspath(__file__))
 DB   = os.path.join(BASE, 'skillmatch.db')
 
-# Gemini API key — set env var GEMINI_API_KEY or paste directly
+# API Keys — Groq (Primary LLM) & Gemini (Secondary)
+GROQ_KEY = os.environ.get('GROQ_API_KEY', '')
+if not GROQ_KEY and os.path.exists(os.path.join(BASE, '.env')):
+    try:
+        with open(os.path.join(BASE, '.env'), 'r') as f:
+            for line in f:
+                if line.startswith('GROQ_API_KEY='):
+                    GROQ_KEY = line.split('=', 1)[1].strip()
+    except Exception:
+        pass
 GEMINI_KEY = os.environ.get('GEMINI_API_KEY', '')
+
+def call_groq(messages, model='qwen/qwen3.8-27b', temperature=0.3, max_tokens=1024):
+    """Call Groq Cloud API for fast inference (qwen/qwen3.8-27b with gpt-oss-20b fallback)."""
+    if not GROQ_KEY:
+        return None
+    url = 'https://api.groq.com/openai/v1/chat/completions'
+    headers = {
+        'Authorization': f'Bearer {GROQ_KEY}',
+        'Content-Type': 'application/json',
+        'User-Agent': 'SkillMatch/2.0'
+    }
+    for m in [model, 'openai/gpt-oss-20b']:
+        payload = {
+            'model': m,
+            'messages': messages,
+            'temperature': temperature,
+            'max_tokens': max_tokens
+        }
+        try:
+            r = http_requests.post(url, headers=headers, json=payload, timeout=12)
+            if r.status_code == 200:
+                data = r.json()
+                return data['choices'][0]['message']['content'].strip()
+        except Exception:
+            continue
+    return None
+
 
 # ══════════════════════════════════════════════
 # SKILL KEYWORD BANK — adapted from India Runs BM25_KEYWORDS + main.py
@@ -193,7 +229,7 @@ def call_gemini(prompt, temperature=0.3):
 # WHATSAPP/EMAIL INGESTION — LLM extraction
 # ══════════════════════════════════════════════
 def parse_opportunity_with_llm(raw_text):
-    """Use Gemini to extract structured opportunity from raw WhatsApp/email text."""
+    """Extract structured opportunity from raw WhatsApp/email text via Groq (fallback to Gemini, then regex)."""
     prompt = f"""You are parsing a forwarded WhatsApp/email opportunity message.
 Extract all fields and return ONLY a valid JSON object with these exact keys:
 
@@ -221,17 +257,36 @@ Extract all fields and return ONLY a valid JSON object with these exact keys:
 RAW TEXT:
 {raw_text}
 
-Return ONLY the JSON, no explanation."""
+Return ONLY the raw JSON object. Do not include markdown codeblocks or conversational text."""
 
-    llm_out = call_gemini(prompt)
+    # 1. Try Groq Cloud first
+    llm_out = call_groq([
+        {'role': 'system', 'content': 'You are a precise JSON extractor. Output valid JSON only, no markdown, no comments.'},
+        {'role': 'user', 'content': prompt}
+    ], temperature=0.1)
+
+    # 2. Try Gemini fallback if Groq didn't succeed
+    if not llm_out:
+        llm_out = call_gemini(prompt)
+
     if llm_out:
-        # Strip markdown fences if present
-        llm_out = re.sub(r'^```(?:json)?\n?', '', llm_out.strip())
-        llm_out = re.sub(r'\n?```$', '', llm_out.strip())
+        clean = re.sub(r'^```(?:json)?\s*', '', llm_out.strip(), flags=re.IGNORECASE)
+        clean = re.sub(r'\s*```$', '', clean)
         try:
-            data = json.loads(llm_out)
-            return data, True  # (parsed, used_llm)
-        except:
+            data = json.loads(clean)
+            # Sanitize eligibleYears to list of ints
+            if 'eligibleYears' in data and isinstance(data['eligibleYears'], list):
+                sanitized_years = []
+                for y in data['eligibleYears']:
+                    if isinstance(y, int): sanitized_years.append(y)
+                    elif isinstance(y, str):
+                        m = re.search(r'\d+', y)
+                        if m: sanitized_years.append(int(m.group()))
+                data['eligibleYears'] = sanitized_years or [1,2,3,4]
+            if not data.get('typeKey'): data['typeKey'] = 'hackathon'
+            if not data.get('type'): data['type'] = data['typeKey'].capitalize()
+            return data, True
+        except Exception:
             pass
 
     # Fallback: regex parsing if no API key or parse fails
@@ -331,7 +386,16 @@ Opportunity:
 
 Write the application note in first person. Do NOT start with "I am writing". Start with something engaging."""
 
-    llm_out = call_gemini(prompt, temperature=0.7)
+    # 1. Try Groq Cloud first
+    llm_out = call_groq([
+        {'role': 'system', 'content': 'You are an expert career counselor helping engineering students craft high-impact, authentic application pitches. Never use emojis. Write in first person.'},
+        {'role': 'user', 'content': prompt}
+    ], temperature=0.6)
+
+    # 2. Try Gemini fallback
+    if not llm_out:
+        llm_out = call_gemini(prompt, temperature=0.7)
+
     if llm_out:
         return llm_out.strip(), True
 
@@ -354,18 +418,56 @@ Write the application note in first person. Do NOT start with "I am writing". St
 
 
 # ══════════════════════════════════════════════
-# AI AGENT
+# AI AGENT (Groq Cloud LLM + Redrob Local Match Engine)
 # ══════════════════════════════════════════════
 def ai_agent(message, student):
     msg = message.lower().strip()
-    name = (student.get('name') or 'there').split()[0]
+    name = (student.get('name') or 'Student').split()[0]
     skills = student.get('skills') or []
 
+    # Local Redrob AI ranker computes mathematical match scores
     ranked = sorted(
         [{'opp': o, 'match': match_score(student, o)} for o in all_opps()],
         key=lambda x: (not x['match']['eligible'], -x['match']['percentage'])
     )
 
+    # 1. Try Groq LLM for intelligent contextual responses
+    if GROQ_KEY:
+        opp_context = ""
+        for i, item in enumerate(ranked[:6], 1):
+            o, m = item['opp'], item['match']
+            dl = days_left(o['deadline'])
+            opp_context += f"- [{o['id']}] {o['title']} ({o['type']}) at {o['org']}: {m['percentage']}% match. Matched skills: {', '.join(m['matchedSkills'][:4]) or 'None'}. Missing skills: {', '.join(m['missingSkills'][:4]) or 'None'}. Deadline: {dl}d left. Stipend: {o['stipend']}.\n"
+
+        student_summary = f"Name: {name}, Year: {student.get('year', 'N/A')}, Branch: {student.get('branch', 'N/A')}, CGPA: {student.get('cgpa', 'N/A')}, Skills: {', '.join(skills) or 'None specified'}, Interests: {', '.join(student.get('interests') or [])}"
+
+        system_prompt = (
+            "You are SkillMatch Copilot, a high-precision AI advisor for engineering students. "
+            "You have direct access to their profile and real-time algorithmic match scores calculated by our Redrob AI ranking engine (all-MiniLM-L6-v2 + BM25 + multi-signal calibration).\n"
+            "Rules:\n"
+            "1. NEVER use any emojis.\n"
+            "2. Keep responses concise, punchy, professional, and actionable (under 120 words).\n"
+            "3. Mention specific opportunities from the context by their exact title and match percentage.\n"
+            "4. Point out what specific skills to learn to unlock better matches when relevant."
+        )
+
+        groq_resp = call_groq([
+            {'role': 'system', 'content': system_prompt},
+            {'role': 'user', 'content': f"Student Profile:\n{student_summary}\n\nTop Matched Opportunities:\n{opp_context}\n\nStudent Query: {message}"}
+        ], temperature=0.3, max_tokens=300)
+
+        if groq_resp:
+            # Detect cited opportunities for interactive mini cards
+            cited_ids = []
+            for item in ranked[:6]:
+                o = item['opp']
+                if o['title'].lower() in groq_resp.lower() or o['org'].lower() in groq_resp.lower():
+                    cited_ids.append(o['id'])
+            if not cited_ids and len(ranked) > 0:
+                cited_ids = [ranked[0]['opp']['id']]
+            return groq_resp, cited_ids[:3]
+
+    # Deterministic fallback when offline or no API key
     if any(k in msg for k in ['best','top','recommend','should apply','what to apply','perfect']):
         top = ranked[:3]
         r = f"Based on your **{student.get('branch')}** profile with **{len(skills)} skills**, your top 3 matches:\n\n"
@@ -805,17 +907,20 @@ def admin_analytics():
         } for r in recent],
         'statusBreakdown': {r['status']: r['c'] for r in status_counts},
         'branchBreakdown': {r['branch']: r['c'] for r in branch_counts},
+        'hasGroqKey': bool(GROQ_KEY),
         'hasGeminiKey': bool(GEMINI_KEY),
     })
 
 # ── Health check ──
 @app.route('/api/health')
 def health():
-    return jsonify({'status': 'ok', 'gemini': bool(GEMINI_KEY), 'pdf': PDF_AVAILABLE})
+    return jsonify({'status': 'ok', 'groq': bool(GROQ_KEY), 'gemini': bool(GEMINI_KEY), 'pdf': PDF_AVAILABLE})
 
 
 if __name__ == '__main__':
     print("\nSkillMatch v2 running at http://localhost:5000")
-    print(f"Gemini API: {'CONFIGURED' if GEMINI_KEY else 'NOT SET (add GEMINI_API_KEY env var for LLM features)'}")
+    print(f"Groq Cloud API: {'CONFIGURED' if GROQ_KEY else 'NOT SET'}")
+    print(f"Gemini API: {'CONFIGURED' if GEMINI_KEY else 'NOT SET'}")
     print(f"PDF parsing: {'available' if PDF_AVAILABLE else 'unavailable'}\n")
     app.run(debug=True, port=5000, host='0.0.0.0')
+
