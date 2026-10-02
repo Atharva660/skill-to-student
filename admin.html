@@ -120,9 +120,13 @@ Flipkart GRID 6.0 national engineering challenge!
 - Register link: https://unstop.com/hackathons/flipkart-grid-60
 - Mode: Online preliminary + Bangalore finals"></textarea>
 
-        <div class="flex items-center gap-3 mt-3">
+        <div class="flex items-center gap-3 mt-3 flex-wrap">
           <button class="btn btn-primary" onclick="ingestOpp()" id="ingest-btn">
             Parse &amp; Publish Listing →
+          </button>
+          <button class="btn btn-secondary" onclick="runAdminLiveScraper()" id="adm-scrape-btn" style="border-color:var(--border-blue);">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:middle;margin-right:4px;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+            Scrape Live Devfolio Hackathons
           </button>
           <button class="btn btn-ghost" onclick="document.getElementById('ingest-text').value=SAMPLE_WHATSAPP_MSG">
             Load Sample Announcement
@@ -402,6 +406,52 @@ async function ingestOpp() {
     toast('Error indexing opportunity', 'error');
   } finally {
     btn.disabled = false; btn.textContent = 'Parse & Publish Listing →';
+  }
+}
+
+async function runAdminLiveScraper() {
+  const btn = document.getElementById('adm-scrape-btn');
+  const resBox = document.getElementById('ingest-result');
+  btn.disabled = true;
+  btn.textContent = 'Scraping Live Web...';
+
+  try {
+    const res = await fetch('/api/scrape', { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      resBox.style.display = 'block';
+      resBox.innerHTML = `
+        <div class="flex items-center gap-2 mb-2">
+          <strong style="color:var(--green);font-size:1rem;">Live Devfolio Scraper Complete!</strong>
+          <span class="badge badge-blue">${data.scrapedCount} Opportunities Scraped (${data.newlyAdded} New Listings)</span>
+        </div>
+        <div class="text-xs text-muted mb-3">Live hackathons scraped directly from Devfolio API and re-scored with Redrob engine.</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          ${(data.opportunities||[]).map(o => `
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:white;border-radius:var(--radius);border:1px solid var(--border);">
+              <div>
+                <div style="font-weight:700;font-size:0.875rem;">${o.title}</div>
+                <div class="text-xs text-muted">${o.location} · Closes ${o.deadline} · ${o.stipend}</div>
+              </div>
+              <div class="flex items-center gap-2">
+                <a href="${o.applyUrl}" target="_blank" rel="noopener" class="btn btn-primary btn-sm">Devfolio Page ↗</a>
+                <a href="/opportunity.html?id=${o.id}" class="btn btn-secondary btn-sm">Match Analysis</a>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+      toast(`Scraped ${data.scrapedCount} live opportunities!`, 'success');
+      loadAnalytics();
+    }
+  } catch (err) {
+    toast('Error connecting to live scraper service', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:middle;margin-right:4px;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+      Scrape Live Devfolio Hackathons
+    `;
   }
 }
 

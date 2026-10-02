@@ -156,7 +156,7 @@
 
         <div style="position:absolute;right:-20px;top:-20px;width:150px;height:150px;border-radius:50%;background:rgba(37,99,235,0.12);"></div>
 
-        <div class="avatar-lg" style="border:2px solid rgba(255,255,255,0.2);" id="b-avatar">?</div>
+        
 
         <div style="flex:1; position:relative;">
 
@@ -400,61 +400,111 @@ async function loadData() {
 
 
 
-
-async function loadCatalogMode() {
-  try {
-    const oRes = await fetch(`${API}/api/opportunities`);
-    allOpps = await oRes.json();
-    student = { name: 'Guest Explorer', year: 3, branch: 'General', skills: [], interests: [] };
-    window._bookmarks = new Set();
-
-    // Update header for guest
-    const ini = 'GE';
-    ['s-avatar','h-avatar','b-avatar'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.textContent = ini;
-    });
-    document.getElementById('s-name').textContent = 'Guest Explorer';
-    document.getElementById('s-meta').textContent = 'Catalog Discovery Mode';
-    document.getElementById('b-greeting').textContent = 'Live Opportunity Catalog';
-    document.getElementById('b-count').textContent = allOpps.length;
-
-    // Banner for guest
-    const heroCard = document.querySelector('.hero-card');
-    if (heroCard) {
-      heroCard.innerHTML = `
-        <div style="flex:1;">
-          <div class="badge badge-blue mb-2" style="display:inline-flex;">Catalog Discovery Mode</div>
-          <h2 style="color:white;margin-bottom:8px;">Browsing ${allOpps.length} Live Opportunities</h2>
-          <p style="color:rgba(255,255,255,0.75);margin-bottom:16px;">Sign in with your student profile or complete the 60-second wizard to calculate mathematical match scores.</p>
-          <div class="flex gap-2">
-            <a href="/index.html#wizard-section" class="btn btn-primary btn-sm">Create Student Profile →</a>
-            <a href="/index.html?login=1" class="btn btn-secondary btn-sm">Student Sign In</a>
-          </div>
-        </div>
-        <div class="hero-prime-badge">
-          <div class="prime-num">${allOpps.length}</div>
-          <div class="prime-lbl">Active Listings</div>
-        </div>
-      `;
-    }
-
-    renderStats();
-    applyFilters();
-  } catch (err) {
-    document.getElementById('opp-grid').innerHTML = `
-      <div class="empty-state">
-        <div class="empty-title">Catalog Service Unavailable</div>
-        <div class="empty-sub">Ensure backend is active at localhost:5000</div>
-      </div>`;
-  }
-}
-
+
+
+async function loadCatalogMode() {
+
+  try {
+
+    const oRes = await fetch(`${API}/api/opportunities`);
+
+    allOpps = await oRes.json();
+
+    student = { name: 'Guest Explorer', year: 3, branch: 'General', skills: [], interests: [] };
+
+    window._bookmarks = new Set();
+
+
+
+    // Update header for guest
+
+    const ini = 'GE';
+
+    ['s-avatar','h-avatar'].forEach(id => {
+
+      const el = document.getElementById(id);
+
+      if (el) el.textContent = ini;
+
+    });
+
+    document.getElementById('s-name').textContent = 'Guest Explorer';
+
+    document.getElementById('s-meta').textContent = 'Catalog Discovery Mode';
+
+    document.getElementById('b-greeting').textContent = 'Live Opportunity Catalog';
+
+    document.getElementById('b-count').textContent = allOpps.length;
+
+
+
+    // Banner for guest
+
+    const heroCard = document.querySelector('.hero-card');
+
+    if (heroCard) {
+
+      heroCard.innerHTML = `
+
+        <div style="flex:1;">
+
+          <div class="badge badge-blue mb-2" style="display:inline-flex;">Catalog Discovery Mode</div>
+
+          <h2 style="color:white;margin-bottom:8px;">Browsing ${allOpps.length} Live Opportunities</h2>
+
+          <p style="color:rgba(255,255,255,0.75);margin-bottom:16px;">Sign in with your student profile or complete the 60-second wizard to calculate mathematical match scores.</p>
+
+          <div class="flex gap-2">
+
+            <a href="/index.html#wizard-section" class="btn btn-primary btn-sm">Create Student Profile →</a>
+
+            <a href="/index.html?login=1" class="btn btn-secondary btn-sm">Student Sign In</a>
+
+          </div>
+
+        </div>
+
+        <div class="hero-prime-badge">
+
+          <div class="prime-num">${allOpps.length}</div>
+
+          <div class="prime-lbl">Active Listings</div>
+
+        </div>
+
+      `;
+
+    }
+
+
+
+    renderStats();
+
+    applyFilters();
+
+  } catch (err) {
+
+    document.getElementById('opp-grid').innerHTML = `
+
+      <div class="empty-state">
+
+        <div class="empty-title">Catalog Service Unavailable</div>
+
+        <div class="empty-sub">Ensure backend is active at localhost:5000</div>
+
+      </div>`;
+
+  }
+
+}
+
+
+
 function renderHeader() {
 
   const ini = (student.name || '?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
 
-  ['s-avatar','h-avatar','b-avatar'].forEach(id => {
+  ['s-avatar','h-avatar'].forEach(id => {
 
     const el = document.getElementById(id);
 
@@ -520,6 +570,39 @@ function setType(typeKey, btn) {
 
 
 
+
+async function syncLiveOpportunities() {
+  const btn = document.getElementById('sync-opps-btn');
+  if (btn) { btn.disabled = true; btn.innerHTML = 'Scraping Live Web...'; }
+  toast('Scraping real-time hackathons & listings from Devfolio API...', 'info');
+
+  try {
+    const res = await fetch(`${API}/api/scrape`, { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      toast(`Scraped ${data.scrapedCount} live opportunities (${data.newlyAdded} new listings added)!`, 'success');
+      // Reload opportunities
+      if (profileId) {
+        await loadData();
+      } else {
+        await loadCatalogMode();
+      }
+    } else {
+      toast('Scraper finished with 0 updates', 'info');
+    }
+  } catch (err) {
+    toast('Error contacting live scraper service', 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:middle;margin-right:4px;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+        Sync Live Scraper
+      `;
+    }
+  }
+}
+
 function applyFilters() {
 
   const q = document.getElementById('search-inp').value.toLowerCase().trim();
