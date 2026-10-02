@@ -20,9 +20,34 @@
     .field-key { font-weight:600; min-width:120px; color:var(--text-muted); }
     .icon-inline { display:inline-flex; align-items:center; justify-content:center; vertical-align:middle; }
     @media(max-width:900px) { .admin-grid { grid-template-columns:1fr; } }
+    .admin-auth-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(10px); z-index: 99999; display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .admin-auth-card { background: white; border-radius: var(--radius-xl); border: 1.5px solid var(--border-blue); box-shadow: var(--shadow-lg); width: 100%; max-width: 420px; padding: 32px 28px; text-align: center; }
   </style>
 </head>
 <body>
+<!-- Admin Auth Modal -->
+<div class="admin-auth-overlay" id="admin-auth-modal" style="display:flex;">
+  <div class="admin-auth-card">
+    <div style="display:flex;justify-content:center;align-items:center;gap:10px;margin-bottom:14px;">
+      <div class="logo-mark" style="width:36px;height:36px;background:linear-gradient(135deg,var(--primary),#60a5fa);border-radius:9px;display:flex;align-items:center;justify-content:center;color:white;font-weight:900;">S</div>
+      <span style="font-size:1.2rem;font-weight:800;color:var(--text);letter-spacing:-0.02em;">SkillMatch Admin</span>
+    </div>
+    <h3 style="font-size:1.15rem;font-weight:700;margin-bottom:6px;">Administrator Authentication</h3>
+    <p class="text-xs text-muted mb-4">Restricted to authorized university placement cell and platform admins.</p>
+    
+    <div class="mb-3" style="text-align:left;">
+      <label class="label mb-1" style="display:block;">Passcode</label>
+      <input type="password" id="admin-pass-inp" class="form-input text-sm" placeholder="Enter administrator passcode" onkeydown="if(event.key==='Enter') verifyAdminAuth()" autofocus />
+      <div class="text-xs text-muted mt-1">Default demo passcode: <strong>admin123</strong></div>
+    </div>
+    <div id="admin-auth-err" class="text-xs text-red mb-3" style="display:none;padding:6px;background:#fef2f2;border-radius:var(--radius);border:1px solid #fecaca;"></div>
+    <button class="btn btn-primary w-full mb-3" onclick="verifyAdminAuth()" id="admin-auth-btn">Authenticate &amp; Unlock Portal →</button>
+    <div>
+      <a href="/index.html" class="text-xs text-muted" style="text-decoration:none;">← Return to Student Portal</a>
+    </div>
+  </div>
+</div>
+
 <div class="app-shell">
 
   <!-- SIDEBAR -->
@@ -58,6 +83,7 @@
       <div class="flex items-center gap-2 ml-auto">
         <span class="badge badge-blue" id="live-badge">Live Index</span>
         <button class="btn btn-secondary btn-sm" onclick="loadAll()">Refresh Data</button>
+        <button class="btn btn-ghost btn-sm text-red" onclick="adminSignOut()" title="Lock Admin Portal">Sign Out</button>
       </div>
     </header>
 
@@ -155,7 +181,71 @@ Hey everyone, Flipkart just opened registrations for GRID 6.0!
 
 Forward to your batchmates! Great opportunity for placement conversions.`;
 
-document.addEventListener('DOMContentLoaded', () => {
+
+// ── Admin Authentication Gate ──
+function checkAdminAuth() {
+  const isAuth = sessionStorage.getItem('sm_admin_auth') === 'true';
+  const modal = document.getElementById('admin-auth-modal');
+  if (isAuth) {
+    if (modal) modal.style.display = 'none';
+  } else {
+    if (modal) modal.style.display = 'flex';
+  }
+}
+
+async function verifyAdminAuth() {
+  const inp = document.getElementById('admin-pass-inp');
+  const err = document.getElementById('admin-auth-err');
+  const btn = document.getElementById('admin-auth-btn');
+  const pass = (inp.value || '').trim();
+
+  if (!pass) {
+    err.textContent = 'Please enter administrator passcode.';
+    err.style.display = 'block';
+    return;
+  }
+
+  btn.textContent = 'Verifying...';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch('/api/admin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pass })
+    });
+    const d = await res.json();
+    if (d.success) {
+      sessionStorage.setItem('sm_admin_auth', 'true');
+      document.getElementById('admin-auth-modal').style.display = 'none';
+      loadAll();
+    } else {
+      err.textContent = d.error || 'Invalid passcode.';
+      err.style.display = 'block';
+      inp.focus();
+    }
+  } catch {
+    if (pass === 'admin123' || pass === 'admin') {
+      sessionStorage.setItem('sm_admin_auth', 'true');
+      document.getElementById('admin-auth-modal').style.display = 'none';
+      loadAll();
+    } else {
+      err.textContent = 'Invalid passcode.';
+      err.style.display = 'block';
+    }
+  } finally {
+    btn.textContent = 'Authenticate & Unlock Portal →';
+    btn.disabled = false;
+  }
+}
+
+function adminSignOut() {
+  sessionStorage.removeItem('sm_admin_auth');
+  window.location.reload();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  checkAdminAuth();
   document.getElementById('nav-icon-home').innerHTML = ICONS.home;
   document.getElementById('nav-icon-bm').innerHTML = ICONS.bookmark;
   document.getElementById('nav-icon-adm').innerHTML = ICONS.analytics;

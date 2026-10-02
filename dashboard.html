@@ -1,378 +1,806 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dashboard — SkillMatch</title>
-  <meta name="description" content="Personalized ranked opportunity feed." />
-  <link rel="stylesheet" href="css/styles.css?v=2" />
-  <script src="js/icons.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-  <style>
-    .icon-inline { display:inline-flex; align-items:center; justify-content:center; vertical-align:middle; }
-    .bookmark-toggle svg { width:16px; height:16px; transition:all var(--fast); }
-    .bookmark-toggle.active svg { fill:var(--primary); stroke:var(--primary); }
-    .badge-icon { display:inline-flex; align-items:center; gap:5px; }
-  </style>
-</head>
-<body>
-<div class="app-shell">
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+  <meta charset="UTF-8" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Dashboard — SkillMatch</title>
+
+  <meta name="description" content="Personalized ranked opportunity feed." />
+
+  <link rel="stylesheet" href="css/styles.css?v=2" />
+
+  <script src="js/icons.js"></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <style>
+
+    .icon-inline { display:inline-flex; align-items:center; justify-content:center; vertical-align:middle; }
+
+    .bookmark-toggle svg { width:16px; height:16px; transition:all var(--fast); }
+
+    .bookmark-toggle.active svg { fill:var(--primary); stroke:var(--primary); }
+
+    .badge-icon { display:inline-flex; align-items:center; gap:5px; }
+
+  </style>
+
+</head>
+
+<body>
+
+<div class="app-shell">
+
+
+
+  <!-- SIDEBAR -->
+
+  <aside class="sidebar" id="sidebar">
+
+    <div class="sidebar-logo">
+
+      <div class="logo-mark">S</div>
+
+      <span style="font-size:0.95rem;font-weight:800;color:white;letter-spacing:-0.01em;">SkillMatch</span>
+
+    </div>
+
+    <nav class="sidebar-nav">
+
+      <a href="/dashboard.html" class="nav-link active"><span class="icon icon-inline" id="nav-icon-home"></span> Dashboard</a>
+
+      <a href="/bookmarks.html" class="nav-link"><span class="icon icon-inline" id="nav-icon-bm"></span> My Applications <span class="badge" id="bm-badge" style="display:none">0</span></a>
+
+      <a href="/profile.html" class="nav-link"><span class="icon icon-inline" id="nav-icon-prof"></span> My Profile</a>
+
+      <div class="sidebar-divider"></div>
+
+      <div class="nav-section-label">Filter by Type</div>
+
+      <button class="nav-link" onclick="setType('hackathon',this)"><span class="icon icon-inline" id="nav-icon-hack"></span> Hackathons</button>
+
+      <button class="nav-link" onclick="setType('internship',this)"><span class="icon icon-inline" id="nav-icon-intern"></span> Internships</button>
+
+      <button class="nav-link" onclick="setType('fellowship',this)"><span class="icon icon-inline" id="nav-icon-fellow"></span> Fellowships</button>
+
+      <button class="nav-link" onclick="setType('research',this)"><span class="icon icon-inline" id="nav-icon-res"></span> Research</button>
+
+      <button class="nav-link" onclick="setType('opensource',this)"><span class="icon icon-inline" id="nav-icon-os"></span> Open Source</button>
+
+      <div class="sidebar-divider"></div>
+
+      <div class="nav-section-label">Management</div>
+
+      <a href="/admin.html" class="nav-link"><span class="icon icon-inline" id="nav-icon-adm"></span> Ingest &amp; Admin</a>
+
+    </nav>
+
+    <div class="sidebar-footer">
+
+      <div class="student-chip" onclick="window.location.href='/profile.html'">
+
+        <div class="avatar" id="s-avatar">?</div>
+
+        <div class="min-w-0">
+
+          <div class="text-sm font-semibold text-white truncate" id="s-name">Loading…</div>
+
+          <div class="text-xs truncate" style="color:rgba(255,255,255,0.45)" id="s-meta">—</div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </aside>
+
+
+
+  <!-- MAIN -->
+
+  <div class="main-area">
+
+
+
+    <!-- Top bar -->
+
+    <header class="top-bar">
+
+      <div class="search-wrap" style="flex:1;max-width:420px;">
+
+        <span class="search-icon" id="top-search-icon"></span>
+
+        <input class="form-input" id="search-inp" type="search"
+
+          placeholder="Search opportunities, organizations, competencies…"
+
+          oninput="applyFilters()" style="border-radius:var(--radius-full);" />
+
+      </div>
+
+      <div class="flex items-center gap-3 ml-auto">
+
+        <button class="btn btn-secondary btn-sm" onclick="window.location.href='/profile.html'">Edit Profile</button>
+
+        <div class="avatar" id="h-avatar" onclick="window.location.href='/profile.html'" style="cursor:pointer;">?</div>
+
+      </div>
+
+    </header>
+
+
+
+    <!-- Content -->
+
+    <div class="page-wrap">
+
+
+
+      <!-- Welcome banner -->
+
+      <div id="welcome-banner" style="
+
+        background: linear-gradient(135deg, #0f172a, #1e293b);
+
+        border: 1px solid rgba(255,255,255,0.08);
+
+        border-radius:var(--radius-xl); padding:24px 28px; margin-bottom:24px;
+
+        display:flex; align-items:center; gap:20px; position:relative; overflow:hidden;">
+
+        <div style="position:absolute;right:-20px;top:-20px;width:150px;height:150px;border-radius:50%;background:rgba(37,99,235,0.12);"></div>
+
+        <div class="avatar-lg" style="border:2px solid rgba(255,255,255,0.2);" id="b-avatar">?</div>
+
+        <div style="flex:1; position:relative;">
+
+          <h2 style="color:white;font-size:1.25rem;" id="b-greeting">Personalized Match Catalog</h2>
+
+          <p style="color:rgba(255,255,255,0.7);font-size:0.875rem;margin-top:4px;" id="b-sub">Ranked and scored against your verified student competencies.</p>
+
+        </div>
+
+        <div style="text-align:center;flex-shrink:0;position:relative;">
+
+          <div style="font-size:2.5rem;font-weight:900;color:white;line-height:1;" id="b-count">—</div>
+
+          <div style="font-size:0.75rem;color:rgba(255,255,255,0.7);margin-top:2px;">Prime Matches</div>
+
+        </div>
+
+      </div>
+
+
+
+      <!-- Stats row -->
+
+      <div class="grid-4 mb-5 stagger" id="stats-row">
+
+        <div class="stat-card">
+
+          <div class="stat-icon" style="background:var(--blue-50);color:var(--primary);" id="st-icon-1"></div>
+
+          <div><div class="stat-val text-blue" id="st-total">—</div><div class="stat-lbl">Catalog Opportunities</div></div>
+
+        </div>
+
+        <div class="stat-card">
+
+          <div class="stat-icon" style="background:#ecfdf5;color:var(--green);" id="st-icon-2"></div>
+
+          <div><div class="stat-val" style="color:var(--green)" id="st-eligible">—</div><div class="stat-lbl">Eligibility Confirmed</div></div>
+
+        </div>
+
+        <div class="stat-card">
+
+          <div class="stat-icon" style="background:#fff5f5;color:var(--red);" id="st-icon-3"></div>
+
+          <div><div class="stat-val" style="color:var(--red)" id="st-urgent">—</div><div class="stat-lbl">Closing Within 3 Days</div></div>
+
+        </div>
+
+        <div class="stat-card">
+
+          <div class="stat-icon" style="background:#fffbeb;color:var(--amber);" id="st-icon-4"></div>
+
+          <div><div class="stat-val" style="color:var(--amber)" id="st-bm">—</div><div class="stat-lbl">Tracked Bookmarks</div></div>
+
+        </div>
+
+      </div>
+
+
+
+      <!-- Filter + sort -->
+
+      <div class="flex items-center justify-between mb-3 flex-wrap gap-3">
+
+        <div class="filter-bar" id="type-pills">
+
+          <button class="fpill active" data-type="all" onclick="setType('all',this)">All Categories</button>
+
+          <button class="fpill" data-type="hackathon" onclick="setType('hackathon',this)">Hackathons</button>
+
+          <button class="fpill" data-type="internship" onclick="setType('internship',this)">Internships</button>
+
+          <button class="fpill" data-type="fellowship" onclick="setType('fellowship',this)">Fellowships</button>
+
+          <button class="fpill" data-type="research" onclick="setType('research',this)">Research</button>
+
+          <button class="fpill" data-type="opensource" onclick="setType('opensource',this)">Open Source</button>
+
+        </div>
+
+        <div class="flex items-center gap-2">
+
+          <select class="form-select text-xs" id="sort-sel" onchange="applyFilters()" style="width:auto;padding:6px 12px;">
+
+            <option value="score">Sort: Match Score (Highest)</option>
+
+            <option value="deadline">Sort: Deadline (Earliest)</option>
+
+            <option value="alpha">Sort: Name (A-Z)</option>
+
+          </select>
+
+        </div>
+
+      </div>
+
+
+
+      <!-- Grid of cards -->
+
+      <div class="opp-grid mb-6 stagger" id="opp-grid">
+
+        <div class="empty-state">
+
+          <div class="empty-title">Loading opportunities...</div>
+
+        </div>
+
+      </div>
+
+
+
+    </div>
+
+  </div>
+
+</div>
+
+
+
+
+
+
+
+<div class="toast-tray" id="toast-tray"></div>
+
+
+
+<script src="js/agent.js"></script>
+
+<script>
+
+const API = 'http://localhost:5000';
+
+let profileId = localStorage.getItem('sm_profile_id');
+
+let student = null, allOpps = [], activeType = 'all';
+
+window._bookmarks = new Set();
+
+
+
+document.addEventListener('DOMContentLoaded', async () => {
+
+  // Setup SVGs
+
+  document.getElementById('nav-icon-home').innerHTML = ICONS.home;
+
+  document.getElementById('nav-icon-bm').innerHTML = ICONS.bookmark;
+
+  document.getElementById('nav-icon-prof').innerHTML = ICONS.user;
+
+  document.getElementById('nav-icon-hack').innerHTML = ICONS.bolt;
+
+  document.getElementById('nav-icon-intern').innerHTML = ICONS.briefcase;
+
+  document.getElementById('nav-icon-fellow').innerHTML = ICONS.academic;
+
+  document.getElementById('nav-icon-res').innerHTML = ICONS.beaker;
+
+  document.getElementById('nav-icon-os').innerHTML = ICONS.code;
+
+  document.getElementById('nav-icon-adm').innerHTML = ICONS.analytics;
+
+
+
+  document.getElementById('top-search-icon').innerHTML = ICONS.search;
+
+  document.getElementById('st-icon-1').innerHTML = ICONS.target;
+
+  document.getElementById('st-icon-2').innerHTML = ICONS.check;
+
+  document.getElementById('st-icon-3').innerHTML = ICONS.clock;
+
+  document.getElementById('st-icon-4').innerHTML = ICONS.bookmark;
+
+  
+
+  if (!profileId) {
+
+    window.location.href = '/';
+
+    return;
+
+  }
+
+  await loadData();
+
+});
+
+
+
+async function loadData() {
+
+  try {
+
+    const [pRes, oRes, bRes] = await Promise.all([
+
+      fetch(`${API}/api/profile/${profileId}`),
+
+      fetch(`${API}/api/opportunities?profile_id=${profileId}`),
+
+      fetch(`${API}/api/bookmarks?profile_id=${profileId}`)
+
+    ]);
+
+
+
+    student = await pRes.json();
+
+    allOpps = await oRes.json();
+
+    const bms = await bRes.json();
+
+    window._bookmarks = new Set(bms);
+
+
+
+    renderHeader();
+
+    renderStats();
+
+    applyFilters();
+
+  } catch (err) {
+
+    document.getElementById('opp-grid').innerHTML = `
+
+      <div class="empty-state">
+
+        <div class="empty-title">Service Connection Offline</div>
+
+        <div class="empty-sub">Ensure the backend is running via: python app.py</div>
+
+      </div>`;
+
+  }
+
+}
+
+
+
 
-  <!-- SIDEBAR -->
-  <aside class="sidebar" id="sidebar">
-    <div class="sidebar-logo">
-      <div class="logo-mark">S</div>
-      <span style="font-size:0.95rem;font-weight:800;color:white;letter-spacing:-0.01em;">SkillMatch</span>
-    </div>
-    <nav class="sidebar-nav">
-      <a href="/dashboard.html" class="nav-link active"><span class="icon icon-inline" id="nav-icon-home"></span> Dashboard</a>
-      <a href="/bookmarks.html" class="nav-link"><span class="icon icon-inline" id="nav-icon-bm"></span> My Applications <span class="badge" id="bm-badge" style="display:none">0</span></a>
-      <a href="/profile.html" class="nav-link"><span class="icon icon-inline" id="nav-icon-prof"></span> My Profile</a>
-      <div class="sidebar-divider"></div>
-      <div class="nav-section-label">Filter by Type</div>
-      <button class="nav-link" onclick="setType('hackathon',this)"><span class="icon icon-inline" id="nav-icon-hack"></span> Hackathons</button>
-      <button class="nav-link" onclick="setType('internship',this)"><span class="icon icon-inline" id="nav-icon-intern"></span> Internships</button>
-      <button class="nav-link" onclick="setType('fellowship',this)"><span class="icon icon-inline" id="nav-icon-fellow"></span> Fellowships</button>
-      <button class="nav-link" onclick="setType('research',this)"><span class="icon icon-inline" id="nav-icon-res"></span> Research</button>
-      <button class="nav-link" onclick="setType('opensource',this)"><span class="icon icon-inline" id="nav-icon-os"></span> Open Source</button>
-      <div class="sidebar-divider"></div>
-      <div class="nav-section-label">Management</div>
-      <a href="/admin.html" class="nav-link"><span class="icon icon-inline" id="nav-icon-adm"></span> Ingest &amp; Admin</a>
-    </nav>
-    <div class="sidebar-footer">
-      <div class="student-chip" onclick="window.location.href='/profile.html'">
-        <div class="avatar" id="s-avatar">?</div>
-        <div class="min-w-0">
-          <div class="text-sm font-semibold text-white truncate" id="s-name">Loading…</div>
-          <div class="text-xs truncate" style="color:rgba(255,255,255,0.45)" id="s-meta">—</div>
-        </div>
-      </div>
-    </div>
-  </aside>
-
-  <!-- MAIN -->
-  <div class="main-area">
-
-    <!-- Top bar -->
-    <header class="top-bar">
-      <div class="search-wrap" style="flex:1;max-width:420px;">
-        <span class="search-icon" id="top-search-icon"></span>
-        <input class="form-input" id="search-inp" type="search"
-          placeholder="Search opportunities, organizations, competencies…"
-          oninput="applyFilters()" style="border-radius:var(--radius-full);" />
-      </div>
-      <div class="flex items-center gap-3 ml-auto">
-        <button class="btn btn-secondary btn-sm" onclick="window.location.href='/profile.html'">Edit Profile</button>
-        <div class="avatar" id="h-avatar" onclick="window.location.href='/profile.html'" style="cursor:pointer;">?</div>
-      </div>
-    </header>
-
-    <!-- Content -->
-    <div class="page-wrap">
-
-      <!-- Welcome banner -->
-      <div id="welcome-banner" style="
-        background: linear-gradient(135deg, #0f172a, #1e293b);
-        border: 1px solid rgba(255,255,255,0.08);
-        border-radius:var(--radius-xl); padding:24px 28px; margin-bottom:24px;
-        display:flex; align-items:center; gap:20px; position:relative; overflow:hidden;">
-        <div style="position:absolute;right:-20px;top:-20px;width:150px;height:150px;border-radius:50%;background:rgba(37,99,235,0.12);"></div>
-        <div class="avatar-lg" style="border:2px solid rgba(255,255,255,0.2);" id="b-avatar">?</div>
-        <div style="flex:1; position:relative;">
-          <h2 style="color:white;font-size:1.25rem;" id="b-greeting">Personalized Match Catalog</h2>
-          <p style="color:rgba(255,255,255,0.7);font-size:0.875rem;margin-top:4px;" id="b-sub">Ranked and scored against your verified student competencies.</p>
-        </div>
-        <div style="text-align:center;flex-shrink:0;position:relative;">
-          <div style="font-size:2.5rem;font-weight:900;color:white;line-height:1;" id="b-count">—</div>
-          <div style="font-size:0.75rem;color:rgba(255,255,255,0.7);margin-top:2px;">Prime Matches</div>
-        </div>
-      </div>
-
-      <!-- Stats row -->
-      <div class="grid-4 mb-5 stagger" id="stats-row">
-        <div class="stat-card">
-          <div class="stat-icon" style="background:var(--blue-50);color:var(--primary);" id="st-icon-1"></div>
-          <div><div class="stat-val text-blue" id="st-total">—</div><div class="stat-lbl">Catalog Opportunities</div></div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon" style="background:#ecfdf5;color:var(--green);" id="st-icon-2"></div>
-          <div><div class="stat-val" style="color:var(--green)" id="st-eligible">—</div><div class="stat-lbl">Eligibility Confirmed</div></div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon" style="background:#fff5f5;color:var(--red);" id="st-icon-3"></div>
-          <div><div class="stat-val" style="color:var(--red)" id="st-urgent">—</div><div class="stat-lbl">Closing Within 3 Days</div></div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon" style="background:#fffbeb;color:var(--amber);" id="st-icon-4"></div>
-          <div><div class="stat-val" style="color:var(--amber)" id="st-bm">—</div><div class="stat-lbl">Tracked Bookmarks</div></div>
-        </div>
-      </div>
-
-      <!-- Filter + sort -->
-      <div class="flex items-center justify-between mb-3 flex-wrap gap-3">
-        <div class="filter-bar" id="type-pills">
-          <button class="fpill active" data-type="all" onclick="setType('all',this)">All Categories</button>
-          <button class="fpill" data-type="hackathon" onclick="setType('hackathon',this)">Hackathons</button>
-          <button class="fpill" data-type="internship" onclick="setType('internship',this)">Internships</button>
-          <button class="fpill" data-type="fellowship" onclick="setType('fellowship',this)">Fellowships</button>
-          <button class="fpill" data-type="research" onclick="setType('research',this)">Research</button>
-          <button class="fpill" data-type="opensource" onclick="setType('opensource',this)">Open Source</button>
-        </div>
-        <div class="flex items-center gap-2">
-          <select class="form-select text-xs" id="sort-sel" onchange="applyFilters()" style="width:auto;padding:6px 12px;">
-            <option value="score">Sort: Match Score (Highest)</option>
-            <option value="deadline">Sort: Deadline (Earliest)</option>
-            <option value="alpha">Sort: Name (A-Z)</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- Grid of cards -->
-      <div class="opp-grid mb-6 stagger" id="opp-grid">
-        <div class="empty-state">
-          <div class="empty-title">Loading opportunities...</div>
-        </div>
-      </div>
-
-    </div>
-  </div>
-</div>
-
-
-
-<div class="toast-tray" id="toast-tray"></div>
-
-<script src="js/agent.js"></script>
-<script>
-const API = 'http://localhost:5000';
-let profileId = localStorage.getItem('sm_profile_id');
-let student = null, allOpps = [], activeType = 'all';
-window._bookmarks = new Set();
-
-document.addEventListener('DOMContentLoaded', async () => {
-  // Setup SVGs
-  document.getElementById('nav-icon-home').innerHTML = ICONS.home;
-  document.getElementById('nav-icon-bm').innerHTML = ICONS.bookmark;
-  document.getElementById('nav-icon-prof').innerHTML = ICONS.user;
-  document.getElementById('nav-icon-hack').innerHTML = ICONS.bolt;
-  document.getElementById('nav-icon-intern').innerHTML = ICONS.briefcase;
-  document.getElementById('nav-icon-fellow').innerHTML = ICONS.academic;
-  document.getElementById('nav-icon-res').innerHTML = ICONS.beaker;
-  document.getElementById('nav-icon-os').innerHTML = ICONS.code;
-  document.getElementById('nav-icon-adm').innerHTML = ICONS.analytics;
-
-  document.getElementById('top-search-icon').innerHTML = ICONS.search;
-  document.getElementById('st-icon-1').innerHTML = ICONS.target;
-  document.getElementById('st-icon-2').innerHTML = ICONS.check;
-  document.getElementById('st-icon-3').innerHTML = ICONS.clock;
-  document.getElementById('st-icon-4').innerHTML = ICONS.bookmark;
-  
-  if (!profileId) {
-    window.location.href = '/';
-    return;
-  }
-  await loadData();
-});
-
-async function loadData() {
+async function loadCatalogMode() {
   try {
-    const [pRes, oRes, bRes] = await Promise.all([
-      fetch(`${API}/api/profile/${profileId}`),
-      fetch(`${API}/api/opportunities?profile_id=${profileId}`),
-      fetch(`${API}/api/bookmarks?profile_id=${profileId}`)
-    ]);
-
-    student = await pRes.json();
+    const oRes = await fetch(`${API}/api/opportunities`);
     allOpps = await oRes.json();
-    const bms = await bRes.json();
-    window._bookmarks = new Set(bms);
+    student = { name: 'Guest Explorer', year: 3, branch: 'General', skills: [], interests: [] };
+    window._bookmarks = new Set();
 
-    renderHeader();
+    // Update header for guest
+    const ini = 'GE';
+    ['s-avatar','h-avatar','b-avatar'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = ini;
+    });
+    document.getElementById('s-name').textContent = 'Guest Explorer';
+    document.getElementById('s-meta').textContent = 'Catalog Discovery Mode';
+    document.getElementById('b-greeting').textContent = 'Live Opportunity Catalog';
+    document.getElementById('b-count').textContent = allOpps.length;
+
+    // Banner for guest
+    const heroCard = document.querySelector('.hero-card');
+    if (heroCard) {
+      heroCard.innerHTML = `
+        <div style="flex:1;">
+          <div class="badge badge-blue mb-2" style="display:inline-flex;">Catalog Discovery Mode</div>
+          <h2 style="color:white;margin-bottom:8px;">Browsing ${allOpps.length} Live Opportunities</h2>
+          <p style="color:rgba(255,255,255,0.75);margin-bottom:16px;">Sign in with your student profile or complete the 60-second wizard to calculate mathematical match scores.</p>
+          <div class="flex gap-2">
+            <a href="/index.html#wizard-section" class="btn btn-primary btn-sm">Create Student Profile →</a>
+            <a href="/index.html?login=1" class="btn btn-secondary btn-sm">Student Sign In</a>
+          </div>
+        </div>
+        <div class="hero-prime-badge">
+          <div class="prime-num">${allOpps.length}</div>
+          <div class="prime-lbl">Active Listings</div>
+        </div>
+      `;
+    }
+
     renderStats();
     applyFilters();
   } catch (err) {
     document.getElementById('opp-grid').innerHTML = `
       <div class="empty-state">
-        <div class="empty-title">Service Connection Offline</div>
-        <div class="empty-sub">Ensure the backend is running via: python app.py</div>
+        <div class="empty-title">Catalog Service Unavailable</div>
+        <div class="empty-sub">Ensure backend is active at localhost:5000</div>
       </div>`;
   }
 }
 
-function renderHeader() {
-  const ini = (student.name || '?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-  ['s-avatar','h-avatar','b-avatar'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.textContent = ini;
-  });
-  document.getElementById('s-name').textContent = student.name;
-  document.getElementById('s-meta').textContent = `Year ${student.year} · ${student.branch}`;
-  document.getElementById('b-greeting').textContent = `Welcome back, ${student.name.split(' ')[0]}`;
-
-  const high = allOpps.filter(o => o.match && o.match.percentage >= 70).length;
-  document.getElementById('b-count').textContent = high;
-}
-
-function renderStats() {
-  document.getElementById('st-total').textContent = allOpps.length;
-  const eligible = allOpps.filter(o => o.match && o.match.eligible).length;
-  document.getElementById('st-eligible').textContent = eligible;
-  const urgent = allOpps.filter(o => o.match && o.match.daysLeft >= 0 && o.match.daysLeft <= 3).length;
-  document.getElementById('st-urgent').textContent = urgent;
-  document.getElementById('st-bm').textContent = window._bookmarks.size;
-
-  const badge = document.getElementById('bm-badge');
-  badge.textContent = window._bookmarks.size;
-  badge.style.display = window._bookmarks.size > 0 ? '' : 'none';
-}
-
-function setType(typeKey, btn) {
-  activeType = typeKey;
-  document.querySelectorAll('.fpill').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('#sidebar .nav-link').forEach(l => l.classList.remove('active'));
-  if (btn) btn.classList.add('active');
-  applyFilters();
-}
-
-function applyFilters() {
-  const q = document.getElementById('search-inp').value.toLowerCase().trim();
-  const sort = document.getElementById('sort-sel').value;
-
-  let list = allOpps.filter(o => {
-    if (activeType !== 'all' && o.typeKey !== activeType) return false;
-    if (q) {
-      const haystack = (o.title + ' ' + o.org + ' ' + o.description + ' ' + (o.requiredSkills||[]).join(' ')).toLowerCase();
-      if (!haystack.includes(q)) return false;
-    }
-    return true;
-  });
-
-  if (sort === 'score') {
-    list.sort((a,b) => ((b.match?.percentage||0) - (a.match?.percentage||0)));
-  } else if (sort === 'deadline') {
-    list.sort((a,b) => ((a.match?.daysLeft||999) - (b.match?.daysLeft||999)));
-  } else if (sort === 'alpha') {
-    list.sort((a,b) => a.title.localeCompare(b.title));
-  }
-
-  renderCards(list);
-}
-
-function renderCards(list) {
-  const grid = document.getElementById('opp-grid');
-  if (list.length === 0) {
-    grid.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-title">No opportunities found</div>
-        <div class="empty-sub">Try adjusting your filters or search keywords.</div>
-      </div>`;
-    return;
-  }
-
-  grid.innerHTML = '';
-  list.forEach(opp => {
-    const card = document.createElement('div');
-    const m = opp.match || { percentage: 0, matchLabel: 'Unrated', matchColor: '#64748b', reasons: [] };
-    const isBm = window._bookmarks.has(opp.id);
-    const dl = m.daysLeft ?? 999;
-    const isUrgent = dl >= 0 && dl <= 3;
-
-    card.className = `opp-card ${isUrgent ? 'urgent-glow' : ''}`;
-    card.onclick = (e) => {
-      if (!e.target.closest('.bookmark-toggle') && !e.target.closest('button') && !e.target.closest('a')) {
-        window.location.href = `/opportunity.html?id=${opp.id}`;
-      }
-    };
-
-    let dlClass = 'badge-gray', dlText = `${dl} days left`;
-    if (dl < 0) { dlClass = 'badge-gray'; dlText = 'Closed'; }
-    else if (dl === 0) { dlClass = 'badge-red'; dlText = 'Closes Today'; }
-    else if (dl <= 3) { dlClass = 'badge-red'; dlText = `${dl}d remaining`; }
-
-    card.innerHTML = `
-      <div class="opp-header">
-        <div class="org-logo" style="background:${opp.orgColor||'#2563eb'};">${opp.orgInitials||'??'}</div>
-        <div class="opp-meta min-w-0">
-          <div class="opp-org">${opp.org}</div>
-          <div class="opp-title">${opp.title}</div>
-        </div>
-        <button class="bookmark-toggle ${isBm ? 'active' : ''}" onclick="toggleBookmark(event, ${opp.id})" title="${isBm ? 'Remove Bookmark' : 'Save'}">
-          ${ICONS.bookmark}
-        </button>
-      </div>
-
-      <div class="opp-badges">
-        <span class="badge badge-gray badge-icon">${TYPE_ICONS[opp.typeKey]||''} ${opp.type}</span>
-        <span class="badge ${dlClass}">${dlText}</span>
-        ${!m.eligible ? '<span class="badge badge-red">Criteria Restricted</span>' : ''}
-        ${opp.featured ? '<span class="badge badge-blue">Priority</span>' : ''}
-      </div>
-
-      <p class="opp-desc">${opp.description}</p>
-
-      <div class="match-row">
-        <div style="font-size:1.4rem;font-weight:900;color:${m.matchColor};line-height:1;min-width:54px;">
-          ${m.percentage}%
-        </div>
-        <div class="match-info min-w-0">
-          <div class="match-label-text" style="color:${m.matchColor};">${m.matchLabel}</div>
-          <div class="match-reason-text">${(m.reasons||[])[0] || 'Competency alignment'}</div>
-        </div>
-      </div>
-
-      <div class="opp-footer">
-        <span class="stipend-tag">${opp.stipend || 'Unspecified'}</span>
-        <div class="flex items-center gap-2">
-          <a href="/opportunity.html?id=${opp.id}" class="btn btn-secondary btn-sm">Analysis</a>
-          ${opp.applyUrl ? `<a href="${opp.applyUrl}" target="_blank" rel="noopener" class="btn btn-primary btn-sm">Portal ↗</a>` : ''}
-        </div>
-      </div>
-    `;
-    grid.appendChild(card);
-  });
-}
-
-async function toggleBookmark(e, oppId) {
-  e.stopPropagation();
-  const wasBm = window._bookmarks.has(oppId);
-  const btn = e.currentTarget;
-
-  try {
-    if (wasBm) {
-      await fetch(`${API}/api/bookmarks`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ profile_id: profileId, opp_id: oppId })
-      });
-      window._bookmarks.delete(oppId);
-      btn.classList.remove('active');
-      toast('Bookmark removed', 'info');
-    } else {
-      await fetch(`${API}/api/bookmarks`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ profile_id: profileId, opp_id: oppId })
-      });
-      window._bookmarks.add(oppId);
-      btn.classList.add('active');
-      toast('Opportunity bookmarked', 'success');
-    }
-    renderStats();
-  } catch {
-    toast('Error updating bookmark', 'error');
-  }
-}
-
-
-
-function toast(msg, type='info') {
-  const tray = document.getElementById('toast-tray');
-  const t = document.createElement('div');
-  t.className = `toast ${type}`;
-  t.innerHTML = `<span>${type==='success'?ICONS.check:ICONS.alert}</span><span>${msg}</span>`;
-  tray.appendChild(t);
-  setTimeout(() => { t.style.animation='toastOut 0.3s ease forwards'; setTimeout(()=>t.remove(),300); }, 3000);
-}
-</script>
-</body>
-</html>
+function renderHeader() {
+
+  const ini = (student.name || '?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+
+  ['s-avatar','h-avatar','b-avatar'].forEach(id => {
+
+    const el = document.getElementById(id);
+
+    if (el) el.textContent = ini;
+
+  });
+
+  document.getElementById('s-name').textContent = student.name;
+
+  document.getElementById('s-meta').textContent = `Year ${student.year} · ${student.branch}`;
+
+  document.getElementById('b-greeting').textContent = `Welcome back, ${student.name.split(' ')[0]}`;
+
+
+
+  const high = allOpps.filter(o => o.match && o.match.percentage >= 70).length;
+
+  document.getElementById('b-count').textContent = high;
+
+}
+
+
+
+function renderStats() {
+
+  document.getElementById('st-total').textContent = allOpps.length;
+
+  const eligible = allOpps.filter(o => o.match && o.match.eligible).length;
+
+  document.getElementById('st-eligible').textContent = eligible;
+
+  const urgent = allOpps.filter(o => o.match && o.match.daysLeft >= 0 && o.match.daysLeft <= 3).length;
+
+  document.getElementById('st-urgent').textContent = urgent;
+
+  document.getElementById('st-bm').textContent = window._bookmarks.size;
+
+
+
+  const badge = document.getElementById('bm-badge');
+
+  badge.textContent = window._bookmarks.size;
+
+  badge.style.display = window._bookmarks.size > 0 ? '' : 'none';
+
+}
+
+
+
+function setType(typeKey, btn) {
+
+  activeType = typeKey;
+
+  document.querySelectorAll('.fpill').forEach(p => p.classList.remove('active'));
+
+  document.querySelectorAll('#sidebar .nav-link').forEach(l => l.classList.remove('active'));
+
+  if (btn) btn.classList.add('active');
+
+  applyFilters();
+
+}
+
+
+
+function applyFilters() {
+
+  const q = document.getElementById('search-inp').value.toLowerCase().trim();
+
+  const sort = document.getElementById('sort-sel').value;
+
+
+
+  let list = allOpps.filter(o => {
+
+    if (activeType !== 'all' && o.typeKey !== activeType) return false;
+
+    if (q) {
+
+      const haystack = (o.title + ' ' + o.org + ' ' + o.description + ' ' + (o.requiredSkills||[]).join(' ')).toLowerCase();
+
+      if (!haystack.includes(q)) return false;
+
+    }
+
+    return true;
+
+  });
+
+
+
+  if (sort === 'score') {
+
+    list.sort((a,b) => ((b.match?.percentage||0) - (a.match?.percentage||0)));
+
+  } else if (sort === 'deadline') {
+
+    list.sort((a,b) => ((a.match?.daysLeft||999) - (b.match?.daysLeft||999)));
+
+  } else if (sort === 'alpha') {
+
+    list.sort((a,b) => a.title.localeCompare(b.title));
+
+  }
+
+
+
+  renderCards(list);
+
+}
+
+
+
+function renderCards(list) {
+
+  const grid = document.getElementById('opp-grid');
+
+  if (list.length === 0) {
+
+    grid.innerHTML = `
+
+      <div class="empty-state">
+
+        <div class="empty-title">No opportunities found</div>
+
+        <div class="empty-sub">Try adjusting your filters or search keywords.</div>
+
+      </div>`;
+
+    return;
+
+  }
+
+
+
+  grid.innerHTML = '';
+
+  list.forEach(opp => {
+
+    const card = document.createElement('div');
+
+    const m = opp.match || { percentage: 0, matchLabel: 'Unrated', matchColor: '#64748b', reasons: [] };
+
+    const isBm = window._bookmarks.has(opp.id);
+
+    const dl = m.daysLeft ?? 999;
+
+    const isUrgent = dl >= 0 && dl <= 3;
+
+
+
+    card.className = `opp-card ${isUrgent ? 'urgent-glow' : ''}`;
+
+    card.onclick = (e) => {
+
+      if (!e.target.closest('.bookmark-toggle') && !e.target.closest('button') && !e.target.closest('a')) {
+
+        window.location.href = `/opportunity.html?id=${opp.id}`;
+
+      }
+
+    };
+
+
+
+    let dlClass = 'badge-gray', dlText = `${dl} days left`;
+
+    if (dl < 0) { dlClass = 'badge-gray'; dlText = 'Closed'; }
+
+    else if (dl === 0) { dlClass = 'badge-red'; dlText = 'Closes Today'; }
+
+    else if (dl <= 3) { dlClass = 'badge-red'; dlText = `${dl}d remaining`; }
+
+
+
+    card.innerHTML = `
+
+      <div class="opp-header">
+
+        <div class="org-logo" style="background:${opp.orgColor||'#2563eb'};">${opp.orgInitials||'??'}</div>
+
+        <div class="opp-meta min-w-0">
+
+          <div class="opp-org">${opp.org}</div>
+
+          <div class="opp-title">${opp.title}</div>
+
+        </div>
+
+        <button class="bookmark-toggle ${isBm ? 'active' : ''}" onclick="toggleBookmark(event, ${opp.id})" title="${isBm ? 'Remove Bookmark' : 'Save'}">
+
+          ${ICONS.bookmark}
+
+        </button>
+
+      </div>
+
+
+
+      <div class="opp-badges">
+
+        <span class="badge badge-gray badge-icon">${TYPE_ICONS[opp.typeKey]||''} ${opp.type}</span>
+
+        <span class="badge ${dlClass}">${dlText}</span>
+
+        ${!m.eligible ? '<span class="badge badge-red">Criteria Restricted</span>' : ''}
+
+        ${opp.featured ? '<span class="badge badge-blue">Priority</span>' : ''}
+
+      </div>
+
+
+
+      <p class="opp-desc">${opp.description}</p>
+
+
+
+      <div class="match-row">
+
+        <div style="font-size:1.4rem;font-weight:900;color:${m.matchColor};line-height:1;min-width:54px;">
+
+          ${m.percentage}%
+
+        </div>
+
+        <div class="match-info min-w-0">
+
+          <div class="match-label-text" style="color:${m.matchColor};">${m.matchLabel}</div>
+
+          <div class="match-reason-text">${(m.reasons||[])[0] || 'Competency alignment'}</div>
+
+        </div>
+
+      </div>
+
+
+
+      <div class="opp-footer">
+
+        <span class="stipend-tag">${opp.stipend || 'Unspecified'}</span>
+
+        <div class="flex items-center gap-2">
+
+          <a href="/opportunity.html?id=${opp.id}" class="btn btn-secondary btn-sm">Analysis</a>
+
+          ${opp.applyUrl ? `<a href="${opp.applyUrl}" target="_blank" rel="noopener" class="btn btn-primary btn-sm">Portal ↗</a>` : ''}
+
+        </div>
+
+      </div>
+
+    `;
+
+    grid.appendChild(card);
+
+  });
+
+}
+
+
+
+async function toggleBookmark(e, oppId) {
+
+  e.stopPropagation();
+
+  const wasBm = window._bookmarks.has(oppId);
+
+  const btn = e.currentTarget;
+
+
+
+  try {
+
+    if (wasBm) {
+
+      await fetch(`${API}/api/bookmarks`, {
+
+        method: 'DELETE',
+
+        headers: { 'Content-Type': 'application/json' },
+
+        body: JSON.stringify({ profile_id: profileId, opp_id: oppId })
+
+      });
+
+      window._bookmarks.delete(oppId);
+
+      btn.classList.remove('active');
+
+      toast('Bookmark removed', 'info');
+
+    } else {
+
+      await fetch(`${API}/api/bookmarks`, {
+
+        method: 'POST',
+
+        headers: { 'Content-Type': 'application/json' },
+
+        body: JSON.stringify({ profile_id: profileId, opp_id: oppId })
+
+      });
+
+      window._bookmarks.add(oppId);
+
+      btn.classList.add('active');
+
+      toast('Opportunity bookmarked', 'success');
+
+    }
+
+    renderStats();
+
+  } catch {
+
+    toast('Error updating bookmark', 'error');
+
+  }
+
+}
+
+
+
+
+
+
+
+function toast(msg, type='info') {
+
+  const tray = document.getElementById('toast-tray');
+
+  const t = document.createElement('div');
+
+  t.className = `toast ${type}`;
+
+  t.innerHTML = `<span>${type==='success'?ICONS.check:ICONS.alert}</span><span>${msg}</span>`;
+
+  tray.appendChild(t);
+
+  setTimeout(() => { t.style.animation='toastOut 0.3s ease forwards'; setTimeout(()=>t.remove(),300); }, 3000);
+
+}
+
+</script>
+
+</body>
+
+</html>
+

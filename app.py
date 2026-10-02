@@ -595,6 +595,42 @@ def get_profile(pid):
     p['interests'] = json.loads(p['interests'] or '[]')
     return jsonify(p)
 
+@app.route('/api/profiles', methods=['GET'])
+def list_profiles():
+    db = get_db()
+    rows = db.execute('SELECT id, name, email, year, branch, college FROM profiles ORDER BY updated_at DESC').fetchall()
+    db.close()
+    return jsonify([dict(r) for r in rows])
+
+@app.route('/api/login', methods=['POST'])
+def student_login():
+    data = request.json or {}
+    email = data.get('email', '').strip().lower()
+    pid = data.get('id', '').strip()
+    db = get_db()
+    if pid:
+        row = db.execute('SELECT * FROM profiles WHERE id=?', (pid,)).fetchone()
+    elif email:
+        row = db.execute('SELECT * FROM profiles WHERE lower(email)=?', (email,)).fetchone()
+    else:
+        row = db.execute('SELECT * FROM profiles ORDER BY updated_at DESC LIMIT 1').fetchone()
+    db.close()
+    if row:
+        p = dict(row)
+        p['skills'] = json.loads(p['skills'] or '[]')
+        p['interests'] = json.loads(p['interests'] or '[]')
+        return jsonify({'success': True, 'profile': p})
+    return jsonify({'success': False, 'error': 'Profile not found. Please register.'}), 404
+
+@app.route('/api/admin/login', methods=['POST'])
+def admin_login():
+    data = request.json or {}
+    password = data.get('password', '').strip()
+    if password in ['admin123', 'admin', 'skillmatch']:
+        return jsonify({'success': True, 'token': 'admin-session-active'})
+    return jsonify({'success': False, 'error': 'Invalid administrator passcode'}), 401
+
+
 
 # ══════════════════════════════════════════════
 # API — OPPORTUNITIES
